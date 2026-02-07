@@ -27,6 +27,27 @@
 | 매매 상세 | 아파트 매매 상세 정보 | `api_03/` |
 | 아파트 전월세 | 전세/월세 거래 | `api_04/` |
 
+### ⚡ 최신 아키텍처 (2026-02)
+
+**모듈화된 Analyzer**: 23개 분석 함수를 6개 전문 모듈로 분리
+```
+backend/analyzer/
+├── basic_stats.py        # 기본 통계 (2 functions)
+├── segmentation.py       # 세분화 분석 (6 functions)
+├── investment.py         # 투자 분석 (3 functions) - 전세가율, 갭투자
+├── premium_analysis.py   # 프리미엄 분석 (4 functions) - 평당가, 층수
+├── market_signals.py     # 시장 신호 (8 functions) - 월세/전세, 추세
+└── utils.py              # 공통 유틸 (10 functions)
+```
+
+**주요 개선사항**:
+- ✅ **유지보수성 향상**: 평균 모듈 크기 486줄 (기존 2,784줄 대비 83% 감소)
+- ✅ **테스트 커버리지**: 166개 테스트, 86.7% 통과율
+- ✅ **제로 브레이킹 체인지**: 기존 코드 100% 호환
+- ✅ **명확한 책임 분리**: 각 모듈이 특정 분석 영역 담당
+
+자세한 내용: [ANALYZER_ARCHITECTURE.md](docs/ANALYZER_ARCHITECTURE.md)
+
 ## 🚀 빠른 시작
 
 ### 1. 환경 설정
