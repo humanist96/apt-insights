@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  CreditCard,
+  Banknote,
+  Lock,
+  CheckCircle2,
+  AlertCircle,
+  Shield,
+  Sparkles,
+} from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
 interface PaymentForm {
@@ -133,154 +143,305 @@ export default function PaymentPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold mb-6">프리미엄 구독</h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Animated background orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -left-32 top-0 h-96 w-96 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 blur-3xl"
+          animate={{
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        <motion.div
+          className="absolute -right-32 top-1/3 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-3xl"
+          animate={{
+            x: [0, -100, 0],
+            y: [0, -50, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </div>
 
-        <div className="mb-8 p-6 bg-blue-50 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-lg font-semibold">월간 프리미엄 플랜</span>
-            <span className="text-2xl font-bold text-blue-600">₩{PLAN_PRICE.toLocaleString()}</span>
+      <div className="relative z-10 container mx-auto max-w-3xl px-4 py-12">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-12 text-center"
+        >
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2 backdrop-blur-sm">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            <span className="text-sm font-medium text-amber-300">프리미엄 구독</span>
           </div>
-          <ul className="text-sm text-gray-600 space-y-1 mt-4">
-            <li>• 무제한 데이터 조회</li>
-            <li>• CSV/PDF 내보내기</li>
-            <li>• 프리미엄 분석 기능</li>
-            <li>• 우선 고객 지원</li>
-          </ul>
-        </div>
+          <h1 className="mb-4 bg-gradient-to-r from-amber-200 via-orange-200 to-pink-200 bg-clip-text text-5xl font-bold text-transparent">
+            프리미엄으로 업그레이드
+          </h1>
+          <p className="text-lg text-slate-400">
+            무제한 데이터 조회와 프리미엄 기능을 이용하세요
+          </p>
+        </motion.div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              결제 수단
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setSelectedMethod("card")}
-                className={`p-4 border-2 rounded-lg ${
-                  selectedMethod === "card"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200"
-                }`}
-              >
-                신용/체크카드
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedMethod("bank_transfer")}
-                className={`p-4 border-2 rounded-lg ${
-                  selectedMethod === "bank_transfer"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200"
-                }`}
-              >
-                계좌이체
-              </button>
+        {/* Plan Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-8 overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-pink-500/5 p-8 backdrop-blur-sm"
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-amber-100">월간 프리미엄 플랜</h2>
+              <p className="mt-1 text-sm text-amber-300/60">매월 자동 갱신</p>
             </div>
-          </div>
-
-          {selectedMethod === "card" && (
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  카드번호
-                </label>
-                <input
-                  type="text"
-                  value={form.cardNumber}
-                  onChange={(e) =>
-                    handleInputChange("cardNumber", formatCardNumber(e.target.value))
-                  }
-                  placeholder="1234 5678 9012 3456"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  disabled={isProcessing}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    유효기간
-                  </label>
-                  <input
-                    type="text"
-                    value={form.expiryDate}
-                    onChange={(e) =>
-                      handleInputChange("expiryDate", formatExpiryDate(e.target.value))
-                    }
-                    placeholder="MM/YY"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    disabled={isProcessing}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CVV
-                  </label>
-                  <input
-                    type="text"
-                    value={form.cvv}
-                    onChange={(e) =>
-                      handleInputChange("cvv", e.target.value.replace(/\D/g, "").slice(0, 3))
-                    }
-                    placeholder="123"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    disabled={isProcessing}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedMethod === "bank_transfer" && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
-                계좌이체 정보는 다음 단계에서 제공됩니다.
+            <div className="text-right">
+              <p className="text-4xl font-bold text-amber-100">
+                ₩{PLAN_PRICE.toLocaleString()}
               </p>
+              <p className="text-sm text-amber-300/60">/ 월</p>
             </div>
-          )}
-
-          <div className="mb-6">
-            <label className="flex items-start">
-              <input
-                type="checkbox"
-                checked={form.agreeTerms}
-                onChange={(e) => handleInputChange("agreeTerms", e.target.checked)}
-                className="mt-1 mr-2"
-                disabled={isProcessing}
-              />
-              <span className="text-sm text-gray-700">
-                이용약관 및 개인정보 처리방침에 동의합니다. (필수)
-              </span>
-            </label>
           </div>
 
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {[
+              "무제한 데이터 조회",
+              "CSV/PDF 내보내기",
+              "프리미엄 분석 기능",
+              "우선 고객 지원",
+            ].map((feature, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-amber-400" />
+                <span className="text-sm text-amber-100/80">{feature}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Payment Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="overflow-hidden rounded-3xl border border-slate-700/50 bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-8 backdrop-blur-sm"
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Payment Method Selection */}
+            <div>
+              <label className="mb-3 block text-sm font-medium text-slate-300">
+                결제 수단 선택
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMethod("card")}
+                  disabled={isProcessing}
+                  className={`group relative overflow-hidden rounded-2xl border-2 p-6 transition-all ${
+                    selectedMethod === "card"
+                      ? "border-amber-500/50 bg-gradient-to-br from-amber-500/20 to-orange-500/10"
+                      : "border-slate-600/50 bg-slate-800/30 hover:border-slate-500/50"
+                  }`}
+                >
+                  <div className="relative flex flex-col items-center gap-2">
+                    <CreditCard
+                      className={`h-8 w-8 transition-colors ${
+                        selectedMethod === "card" ? "text-amber-400" : "text-slate-400"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        selectedMethod === "card" ? "text-amber-100" : "text-slate-400"
+                      }`}
+                    >
+                      신용/체크카드
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedMethod("bank_transfer")}
+                  disabled={isProcessing}
+                  className={`group relative overflow-hidden rounded-2xl border-2 p-6 transition-all ${
+                    selectedMethod === "bank_transfer"
+                      ? "border-amber-500/50 bg-gradient-to-br from-amber-500/20 to-orange-500/10"
+                      : "border-slate-600/50 bg-slate-800/30 hover:border-slate-500/50"
+                  }`}
+                >
+                  <div className="relative flex flex-col items-center gap-2">
+                    <Banknote
+                      className={`h-8 w-8 transition-colors ${
+                        selectedMethod === "bank_transfer" ? "text-amber-400" : "text-slate-400"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        selectedMethod === "bank_transfer" ? "text-amber-100" : "text-slate-400"
+                      }`}
+                    >
+                      계좌이체
+                    </span>
+                  </div>
+                </button>
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isProcessing}
-            className={`w-full py-4 rounded-lg font-semibold text-white ${
-              isProcessing
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {isProcessing ? "결제 처리 중..." : `₩${PLAN_PRICE.toLocaleString()} 결제하기`}
-          </button>
-        </form>
+            {/* Card Form */}
+            {selectedMethod === "card" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    카드번호
+                  </label>
+                  <input
+                    type="text"
+                    value={form.cardNumber}
+                    onChange={(e) =>
+                      handleInputChange("cardNumber", formatCardNumber(e.target.value))
+                    }
+                    placeholder="1234 5678 9012 3456"
+                    disabled={isProcessing}
+                    className="w-full rounded-xl border border-slate-600/50 bg-slate-800/50 px-4 py-3 text-slate-200 backdrop-blur-sm transition-all placeholder:text-slate-500 hover:border-amber-500/50 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>안전한 결제를 위해 암호화된 연결을 사용합니다.</p>
-          <p className="mt-1">언제든지 구독을 취소할 수 있습니다.</p>
-        </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      유효기간
+                    </label>
+                    <input
+                      type="text"
+                      value={form.expiryDate}
+                      onChange={(e) =>
+                        handleInputChange("expiryDate", formatExpiryDate(e.target.value))
+                      }
+                      placeholder="MM/YY"
+                      disabled={isProcessing}
+                      className="w-full rounded-xl border border-slate-600/50 bg-slate-800/50 px-4 py-3 text-slate-200 backdrop-blur-sm transition-all placeholder:text-slate-500 hover:border-amber-500/50 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      CVV
+                    </label>
+                    <input
+                      type="text"
+                      value={form.cvv}
+                      onChange={(e) =>
+                        handleInputChange("cvv", e.target.value.replace(/\D/g, "").slice(0, 3))
+                      }
+                      placeholder="123"
+                      disabled={isProcessing}
+                      className="w-full rounded-xl border border-slate-600/50 bg-slate-800/50 px-4 py-3 text-slate-200 backdrop-blur-sm transition-all placeholder:text-slate-500 hover:border-amber-500/50 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Bank Transfer Notice */}
+            {selectedMethod === "bank_transfer" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-indigo-500/5 p-6 backdrop-blur-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <Banknote className="h-5 w-5 text-blue-400" />
+                  <p className="text-sm text-blue-400/80">
+                    계좌이체 정보는 다음 단계에서 제공됩니다.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Terms Checkbox */}
+            <div>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-600/50 bg-slate-800/30 p-4 transition-colors hover:border-slate-500/50">
+                <input
+                  type="checkbox"
+                  checked={form.agreeTerms}
+                  onChange={(e) => handleInputChange("agreeTerms", e.target.checked)}
+                  disabled={isProcessing}
+                  className="mt-1 h-5 w-5 cursor-pointer rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed"
+                />
+                <span className="flex-1 text-sm text-slate-300">
+                  이용약관 및 개인정보 처리방침에 동의합니다. (필수)
+                </span>
+              </label>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-600/5 p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:shadow-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-400 opacity-0 transition-opacity group-hover:opacity-100" />
+              <span className="relative flex items-center justify-center gap-2">
+                {isProcessing ? (
+                  <>
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    결제 처리 중...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5" />₩{PLAN_PRICE.toLocaleString()} 결제하기
+                  </>
+                )}
+              </span>
+            </button>
+          </form>
+        </motion.div>
+
+        {/* Security Notice */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-8 text-center"
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-4 py-2 backdrop-blur-sm">
+            <Shield className="h-4 w-4 text-green-400" />
+            <span className="text-sm text-green-400">SSL 암호화로 안전하게 보호됩니다</span>
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            언제든지 구독을 취소할 수 있습니다.
+          </p>
+        </motion.div>
       </div>
     </div>
   );
