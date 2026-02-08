@@ -31,5 +31,5 @@ python-multipart==0.0.12
 
 # Monitoring and observability
 sentry-sdk[fastapi]==2.19.2
-prometheus-client==0.21.0
+prometheus-client==0.24.1
 prometheus-fastapi-instrumentator==7.0.0
