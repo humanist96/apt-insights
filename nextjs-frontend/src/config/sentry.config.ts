@@ -48,8 +48,8 @@ export function initSentry() {
     release: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
 
     // Error filtering
-    beforeSend(event, hint) {
-      return filterErrors(event, hint);
+    beforeSend(event: any, hint: any) {
+      return filterErrors(event, hint) as any;
     },
 
     // Ignore certain errors
@@ -118,7 +118,7 @@ function filterErrors(event: Sentry.Event, hint: Sentry.EventHint): Sentry.Event
     }
 
     // Remove sensitive query params
-    if (request.query_string) {
+    if (request.query_string && typeof request.query_string === 'string') {
       const sensitiveParams = ['token', 'password', 'secret', 'api_key'];
       const queryString = request.query_string.toLowerCase();
       if (sensitiveParams.some(param => queryString.includes(param))) {
