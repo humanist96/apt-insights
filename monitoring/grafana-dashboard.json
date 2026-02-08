@@ -1,0 +1,246 @@
+{
+  "dashboard": {
+    "title": "Apartment Analysis Platform - Overview",
+    "tags": ["apartment-analysis", "api", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"fastapi-backend\"}",
+            "legendFormat": "API Status"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(api_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 9, "h": 4}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(errors_total[5m])",
+            "legendFormat": "{{error_type}}"
+          }
+        ],
+        "gridPos": {"x": 15, "y": 0, "w": 9, "h": 4}
+      },
+      {
+        "id": 4,
+        "title": "Response Time (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6}
+      },
+      {
+        "id": 5,
+        "title": "Analysis Requests by Type",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(analysis_requests_total[5m])",
+            "legendFormat": "{{analysis_type}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6}
+      },
+      {
+        "id": 6,
+        "title": "Database Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"postgresql\"}",
+            "legendFormat": "Database Status"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 10, "w": 6, "h": 4}
+      },
+      {
+        "id": 7,
+        "title": "Active Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "active_database_connections",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 10, "w": 9, "h": 4}
+      },
+      {
+        "id": 8,
+        "title": "Database Query Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{query_type}} p95"
+          }
+        ],
+        "gridPos": {"x": 15, "y": 10, "w": 9, "h": 4}
+      },
+      {
+        "id": 9,
+        "title": "Redis Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"redis\"}",
+            "legendFormat": "Redis Status"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 14, "w": 6, "h": 4}
+      },
+      {
+        "id": 10,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m]))",
+            "legendFormat": "Hit Rate"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 14, "w": 9, "h": 4}
+      },
+      {
+        "id": 11,
+        "title": "Redis Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "Memory Used"
+          }
+        ],
+        "gridPos": {"x": 15, "y": 14, "w": 9, "h": 4}
+      },
+      {
+        "id": 12,
+        "title": "External API Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(external_api_requests_total[5m])",
+            "legendFormat": "{{api_name}} - {{status}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 18, "w": 12, "h": 6}
+      },
+      {
+        "id": 13,
+        "title": "External API Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(external_api_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{api_name}} p95"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 18, "w": 12, "h": 6}
+      },
+      {
+        "id": 14,
+        "title": "Active Users (Last Hour)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "authenticated_users",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 24, "w": 6, "h": 4}
+      },
+      {
+        "id": 15,
+        "title": "Subscription Users",
+        "type": "pie",
+        "targets": [
+          {
+            "expr": "subscription_users_total",
+            "legendFormat": "{{plan_type}}"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 24, "w": 6, "h": 4}
+      },
+      {
+        "id": 16,
+        "title": "Total Transactions in Database",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "total_transactions_in_database",
+            "legendFormat": "Total Transactions"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 24, "w": 6, "h": 4}
+      },
+      {
+        "id": 17,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 24, "w": 6, "h": 4}
+      },
+      {
+        "id": 18,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "Memory Used"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 28, "w": 12, "h": 6}
+      },
+      {
+        "id": 19,
+        "title": "Disk Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}",
+            "legendFormat": "Disk Available"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 28, "w": 12, "h": 6}
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

@@ -1,0 +1,389 @@
+# =============================================================================
+# Backend CI Pipeline - FastAPI
+# =============================================================================
+# Runs on every push/PR to fastapi-backend/
+# Tests, lints, type checks, security scans, and builds Docker image
+
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'fastapi-backend/**'
+      - 'backend/**'
+      - 'tests/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'fastapi-backend/**'
+      - 'backend/**'
+      - 'tests/**'
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/fastapi-backend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint and Type Check
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            fastapi-backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install ruff mypy bandit types-requests
+
+      - name: Run Ruff linter
+        run: |
+          ruff check fastapi-backend/ backend/ tests/ --output-format=github
+        continue-on-error: false
+
+      - name: Run Ruff formatter check
+        run: |
+          ruff format --check fastapi-backend/ backend/ tests/
+
+      - name: Run mypy type checking
+        run: |
+          mypy fastapi-backend/ \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --warn-return-any \
+            --warn-unused-configs \
+            --disallow-untyped-defs \
+            --exclude 'test_.*\.py$'
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Security Scan
+  # ---------------------------------------------------------------------------
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r fastapi-backend/ backend/ \
+            -f json \
+            -o bandit-report.json \
+            --severity-level medium \
+            --confidence-level medium \
+            -x '**/test_*.py,**/*_test.py' \
+            || true
+
+      - name: Display Bandit results
+        if: always()
+        run: |
+          bandit -r fastapi-backend/ backend/ \
+            --severity-level medium \
+            --confidence-level medium \
+            -x '**/test_*.py,**/*_test.py' \
+            || true
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          retention-days: 30
+
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          pip install -r fastapi-backend/requirements.txt
+          safety check --output json > safety-report.json || true
+          safety check || true
+
+      - name: Upload Safety report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-vulnerability-report
+          path: safety-report.json
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Tests with Coverage
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: apt_insights_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_insights_test
+      REDIS_URL: redis://localhost:6379/0
+      USE_DATABASE: 'true'
+      USE_REDIS: 'true'
+      SECRET_KEY: test-secret-key-for-ci-pipeline-only
+      ENVIRONMENT: test
+      SERVICE_KEY: test-service-key
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            fastapi-backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-xdist httpx
+
+      - name: Run database migrations
+        run: |
+          cd fastapi-backend
+          if [ -d "migrations" ]; then
+            for sql_file in migrations/*.sql; do
+              if [ -f "$sql_file" ]; then
+                PGPASSWORD=postgres psql -h localhost -U postgres -d apt_insights_test -f "$sql_file" || true
+              fi
+            done
+          fi
+
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ \
+            --cov=backend \
+            --cov=fastapi-backend \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            --tb=short \
+            --junitxml=test-results.xml \
+            -v \
+            -x
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Run FastAPI-specific tests
+        run: |
+          cd fastapi-backend
+          pytest test_api.py test_auth.py test_new_endpoints.py test_payment_integration.py \
+            --cov-append \
+            --cov=. \
+            --cov-report=term-missing \
+            --tb=short \
+            -v \
+            || true
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/fastapi-backend
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 30
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+          retention-days: 30
+
+      - name: Coverage comment on PR
+        if: github.event_name == 'pull_request'
+        uses: orgoro/coverage@v3.2
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          thresholdAll: 0.80
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Docker Build
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./fastapi-backend
+          file: ./fastapi-backend/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Scan Docker image for vulnerabilities
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 30
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Deploy to Railway (main branch only)
+  # ---------------------------------------------------------------------------
+  deploy-railway:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deployment_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy to Railway
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd fastapi-backend
+          railway up --service fastapi-backend --detach
+          echo "deployment_url=https://$(railway domain --service fastapi-backend)" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment health
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.deployment_url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "Waiting for deployment to be ready..."
+            for i in $(seq 1 30); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOY_URL}/health" || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "Deployment is healthy!"
+                curl -s "${DEPLOY_URL}/health" | python3 -m json.tool
+                exit 0
+              fi
+              echo "Attempt $i/30: Status $STATUS - waiting 10s..."
+              sleep 10
+            done
+            echo "Deployment health check failed after 5 minutes"
+            exit 1
+          else
+            echo "No deployment URL available, skipping health check"
+          fi
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue?.number || 0,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Deployment Failed\n\nBackend deployment to Railway failed.\n\n**Commit:** ${context.sha}\n**Workflow:** ${context.workflow}\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            }).catch(() => {});

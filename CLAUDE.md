@@ -26,6 +26,12 @@ python api_01/test_suwon.py
 
 # Launch Streamlit frontend
 streamlit run frontend/app.py
+
+# Performance Testing & Optimization
+python scripts/performance_check.py           # Quick performance check
+python scripts/benchmark.py                   # Full API benchmark
+./scripts/optimize_all.sh                     # Run all optimizations
+cd tests/load && locust -f locustfile.py      # Load testing with Locust
 ```
 
 ## Architecture
@@ -88,8 +94,41 @@ runner.generate_report()
 - Seoul Seocho-gu: `11650`
 - Seoul Songpa-gu: `11710`
 
+## Performance Testing & Optimization
+
+### Quick Start
+See `PERFORMANCE_QUICK_START.md` for 5-minute setup guide.
+
+### Tools & Scripts
+
+- **Load Testing**: `tests/load/locustfile.py` - Locust-based load testing with user simulation
+- **Benchmarking**: `scripts/benchmark.py` - Comprehensive API endpoint benchmarking
+- **Quick Check**: `scripts/performance_check.py` - Fast performance validation
+- **Optimization**: `scripts/optimize_all.sh` - Run all optimization tasks
+- **DB Optimizer**: `fastapi-backend/db/query_optimizer.py` - Database query analysis and optimization
+- **Cache Warmer**: `fastapi-backend/cache/cache_warming.py` - Redis cache pre-population
+
+### Performance Targets
+
+| Metric | Target | Tool |
+|--------|--------|------|
+| p50 Response Time | < 50ms | benchmark.py |
+| p95 Response Time | < 200ms | benchmark.py |
+| p99 Response Time | < 500ms | benchmark.py |
+| Throughput | 1000 req/min | Locust |
+| Error Rate | < 0.1% | Locust |
+| Cache Hit Rate | > 80% | cache_warming.py |
+
+### Documentation
+
+- **Comprehensive Guide**: `PERFORMANCE_OPTIMIZATION.md`
+- **Quick Start**: `PERFORMANCE_QUICK_START.md`
+- **Load Testing**: `tests/load/README.md`
+- **Scripts**: `scripts/README.md`
+
 ## Important Notes
 
 - Frontend loads only from real test output JSON files - no mock data
 - API classes are duplicated in both `api_XX/` and `backend/api_modules/`
 - Normalized fields in data_loader.py are prefixed with underscore (e.g., `_deal_amount_numeric`, `_region_name`)
+- Performance tests run in CI/CD pipeline via `.github/workflows/performance.yml`

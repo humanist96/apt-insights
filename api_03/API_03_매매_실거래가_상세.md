@@ -1,0 +1,218 @@
+# API 3: 아파트 매매 실거래가 상세 자료
+
+## 개요
+국토교통부에서 제공하는 아파트 매매 실거래가 상세 공개 자료 API입니다. 아파트 매매 거래의 상세 정보를 조회할 수 있습니다.
+
+## 기본 정보
+- **제공기관**: 국토교통부
+- **Base URL**: `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev`
+- **HTTP Method**: `GET`
+- **엔드포인트**: `/getRTMSDataSvcAptTradeDev`
+- **인증 방식**: Service Key (공공데이터포털 인증키)
+
+## 요청 파라미터
+
+| 파라미터명 | 타입 | 필수 | 설명 | 예시 |
+|-----------|------|------|------|------|
+| serviceKey | string | 필수 | 공공데이터포털에서 발급받은 인증키 | `YOUR_SERVICE_KEY` |
+| LAWD_CD | string | 필수 | 지역코드 (법정동코드 5자리) | `11680` (서울특별시 강남구) |
+| DEAL_YMD | string | 필수 | 계약년월 (YYYYMM 형식) | `202401` |
+| numOfRows | number | 선택 | 한 페이지 결과 수 (기본값: 10) | `10` |
+| pageNo | number | 선택 | 페이지 번호 (기본값: 1) | `1` |
+
+### 지역코드 (LAWD_CD) 참고
+- 법정동코드 5자리 사용
+- 예: 서울특별시 종로구 = `11110`, 강남구 = `11680`
+- 전체 지역코드는 공공데이터포털에서 제공하는 법정동코드 목록 참조
+
+## 요청 예시
+
+### cURL
+```bash
+curl "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=YOUR_SERVICE_KEY&LAWD_CD=11680&DEAL_YMD=202401&numOfRows=10&pageNo=1"
+```
+
+### JavaScript (fetch)
+```javascript
+const serviceKey = 'YOUR_SERVICE_KEY';
+const lawdCd = '11680'; // 강남구
+const dealYmd = '202401'; // 2024년 1월
+const numOfRows = 10;
+const pageNo = 1;
+
+const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${serviceKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=${numOfRows}&pageNo=${pageNo}`;
+
+fetch(url)
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+### Python (requests)
+```python
+import requests
+
+service_key = 'YOUR_SERVICE_KEY'
+lawd_cd = '11680'  # 강남구
+deal_ymd = '202401'  # 2024년 1월
+num_of_rows = 10
+page_no = 1
+
+url = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev'
+params = {
+    'serviceKey': service_key,
+    'LAWD_CD': lawd_cd,
+    'DEAL_YMD': deal_ymd,
+    'numOfRows': num_of_rows,
+    'pageNo': page_no
+}
+
+response = requests.get(url, params=params)
+data = response.json()
+print(data)
+```
+
+## 응답 구조
+
+### 성공 응답 (200 OK)
+
+```json
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL_SERVICE"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "거래금액": "120000",
+            "건축년도": "2015",
+            "년": "2024",
+            "법정동": "역삼동",
+            "아파트": "래미안강남파크",
+            "월": "1",
+            "일": "20",
+            "전용면적": "114.95",
+            "지번": "737",
+            "지역코드": "11680",
+            "층": "15",
+            "건축년도": "2015",
+            "도로명": "테헤란로",
+            "도로명건물본번호코드": "1168010100",
+            "도로명건물부번호코드": "0000",
+            "도로명시군구코드": "11680",
+            "도로명일련번호코드": "01",
+            "도로명지상지하코드": "0",
+            "도로명코드": "1168010100",
+            "법정동본번코드": "737",
+            "법정동부번코드": "0",
+            "법정동시군구코드": "11680",
+            "법정동읍면동코드": "101",
+            "법정동지번코드": "737",
+            "일련번호": "11680-10101",
+            "해제사유발생일": "",
+            "해제여부": "N"
+          }
+        ]
+      },
+      "numOfRows": 10,
+      "pageNo": 1,
+      "totalCount": 1
+    }
+  }
+}
+```
+
+### 응답 필드 설명
+
+#### Header
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| resultCode | string | 결과코드 (`00`: 정상, 그 외: 오류) |
+| resultMsg | string | 결과메시지 |
+
+#### Body
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| totalCount | number | 전체 결과 수 |
+| numOfRows | number | 한 페이지 결과 수 |
+| pageNo | number | 현재 페이지 번호 |
+| items.item[] | array | 거래 정보 배열 |
+
+#### Item 필드 (기본 필드)
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| 거래금액 | string | 거래금액 (만원 단위, 쉼표 제거) |
+| 건축년도 | string | 건축년도 |
+| 년 | string | 계약년도 |
+| 법정동 | string | 법정동명 |
+| 아파트 | string | 아파트명 |
+| 월 | string | 계약월 |
+| 일 | string | 계약일 |
+| 전용면적 | string | 전용면적 (㎡) |
+| 지번 | string | 지번 |
+| 지역코드 | string | 지역코드 (법정동코드) |
+| 층 | string | 층수 |
+
+#### Item 필드 (상세 필드)
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| 도로명 | string | 도로명 주소 |
+| 도로명건물본번호코드 | string | 도로명 건물 본번호 코드 |
+| 도로명건물부번호코드 | string | 도로명 건물 부번호 코드 |
+| 도로명시군구코드 | string | 도로명 시군구 코드 |
+| 도로명일련번호코드 | string | 도로명 일련번호 코드 |
+| 도로명지상지하코드 | string | 도로명 지상/지하 코드 (0: 지상, 1: 지하) |
+| 도로명코드 | string | 도로명 코드 |
+| 법정동본번코드 | string | 법정동 본번 코드 |
+| 법정동부번코드 | string | 법정동 부번 코드 |
+| 법정동시군구코드 | string | 법정동 시군구 코드 |
+| 법정동읍면동코드 | string | 법정동 읍면동 코드 |
+| 법정동지번코드 | string | 법정동 지번 코드 |
+| 일련번호 | string | 일련번호 |
+| 해제사유발생일 | string | 해제사유 발생일 (해제된 경우) |
+| 해제여부 | string | 해제여부 (Y: 해제됨, N: 해제안됨) |
+
+## API 2번과의 차이점
+이 API는 API 2번(일반 매매 실거래가)과 비교하여 다음과 같은 추가 정보를 제공합니다:
+- 도로명 주소 정보
+- 상세한 코드 정보 (도로명코드, 법정동코드 등)
+- 해제 여부 및 해제사유 발생일
+- 일련번호
+
+## 에러 코드
+
+| resultCode | resultMsg | 설명 |
+|------------|-----------|------|
+| 00 | NORMAL_SERVICE | 정상 처리 |
+| 01 | APPLICATION_ERROR | 어플리케이션 에러 |
+| 02 | DB_ERROR | 데이터베이스 에러 |
+| 03 | NODATA_ERROR | 데이터 없음 |
+| 04 | HTTP_ERROR | HTTP 에러 |
+| 05 | SERVICETIME_OUT | 서비스 연결 실패 |
+| 10 | INVALID_REQUEST_PARAMETER_ERROR | 잘못된 요청 파라미터 |
+| 11 | NO_MANDATORY_REQUEST_PARAMETERS_ERROR | 필수 파라미터 누락 |
+| 12 | NO_OPENAPI_SERVICE_ERROR | 해당 오픈API 서비스가 없거나 폐기됨 |
+| 20 | SERVICE_ACCESS_DENIED_ERROR | 서비스 접근 거부 |
+| 22 | LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR | 서비스 요청제한횟수 초과 |
+| 30 | SERVICE_KEY_IS_NOT_REGISTERED_ERROR | 등록되지 않은 서비스키 |
+| 31 | DEADLINE_HAS_EXPIRED_ERROR | 기한 만료된 서비스키 |
+| 32 | UNREGISTERED_IP_ERROR | 등록되지 않은 IP |
+| 33 | UNSIGNED_CALL_ERROR | 서명되지 않은 호출 |
+
+## 주의사항
+1. **인증키**: 공공데이터포털에서 발급받은 서비스키를 사용해야 합니다.
+2. **요청 제한**: 일일 요청 횟수 제한이 있을 수 있습니다.
+3. **데이터 지연**: 실거래가 데이터는 등기 완료 후 공개되므로 1-2개월 지연될 수 있습니다.
+4. **지역코드**: 정확한 법정동코드를 사용해야 합니다.
+5. **계약년월**: YYYYMM 형식으로 입력해야 합니다 (예: 202401).
+6. **거래금액**: 만원 단위로 제공되며, 실제 거래금액은 이 값에 10,000을 곱한 값입니다.
+7. **해제여부**: 계약이 해제된 경우 해제여부가 "Y"로 표시되며, 해제사유발생일이 기록됩니다.
+
+## 참고사항
+- 공공데이터포털: https://www.data.go.kr
+- 법정동코드 조회: 공공데이터포털에서 제공하는 법정동코드 API 참조
+- 데이터 제공 주기: 매월 업데이트
+- 상세 정보가 필요한 경우에만 이 API를 사용하세요. 일반적인 조회는 API 2번을 사용하는 것이 더 효율적입니다.

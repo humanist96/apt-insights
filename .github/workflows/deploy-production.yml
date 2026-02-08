@@ -1,0 +1,539 @@
+# =============================================================================
+# Production Deployment Pipeline
+# =============================================================================
+# Orchestrates full-stack deployment with database migrations
+# Triggered on merge to main branch or manual dispatch
+
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy backend to Railway'
+        required: false
+        default: true
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy frontend to Vercel'
+        required: false
+        default: true
+        type: boolean
+      run_migrations:
+        description: 'Run database migrations'
+        required: false
+        default: true
+        type: boolean
+      skip_tests:
+        description: 'Skip tests (emergency deploys only)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Pre-deployment Checks
+  # ---------------------------------------------------------------------------
+  pre-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    outputs:
+      backend_changed: ${{ steps.changes.outputs.backend }}
+      frontend_changed: ${{ steps.changes.outputs.frontend }}
+      migrations_changed: ${{ steps.changes.outputs.migrations }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'fastapi-backend/**'
+              - 'backend/**'
+            frontend:
+              - 'nextjs-frontend/**'
+            migrations:
+              - 'fastapi-backend/migrations/**'
+
+      - name: Print change summary
+        run: |
+          echo "## Change Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changed |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ steps.changes.outputs.backend }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ steps.changes.outputs.frontend }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Migrations | ${{ steps.changes.outputs.migrations }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Backend Tests (skip if no changes or skip_tests is true)
+  # ---------------------------------------------------------------------------
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: [pre-checks]
+    if: |
+      (needs.pre-checks.outputs.backend_changed == 'true' || github.event_name == 'workflow_dispatch')
+      && (github.event.inputs.skip_tests != 'true')
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: apt_insights_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_insights_test
+      REDIS_URL: redis://localhost:6379/0
+      USE_DATABASE: 'true'
+      USE_REDIS: 'true'
+      SECRET_KEY: test-secret-key-for-ci-pipeline-only
+      SERVICE_KEY: test-service-key
+      ENVIRONMENT: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --cov=backend \
+            --cov-fail-under=80 \
+            --tb=short \
+            -v
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+  # ---------------------------------------------------------------------------
+  # Frontend Tests
+  # ---------------------------------------------------------------------------
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: [pre-checks]
+    if: |
+      (needs.pre-checks.outputs.frontend_changed == 'true' || github.event_name == 'workflow_dispatch')
+      && (github.event.inputs.skip_tests != 'true')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: nextjs-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: nextjs-frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: nextjs-frontend
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: nextjs-frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: nextjs-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_TELEMETRY_DISABLED: 1
+
+  # ---------------------------------------------------------------------------
+  # Database Migrations
+  # ---------------------------------------------------------------------------
+  database-migrations:
+    name: Database Migrations
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    if: |
+      always()
+      && (needs.backend-tests.result == 'success' || needs.backend-tests.result == 'skipped')
+      && (needs.pre-checks.outputs.migrations_changed == 'true' || github.event.inputs.run_migrations == 'true')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary sqlalchemy alembic
+
+      - name: Validate migration files
+        run: |
+          echo "## Migration Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          MIGRATION_DIR="fastapi-backend/migrations"
+          if [ -d "$MIGRATION_DIR" ]; then
+            echo "Migration files found:" >> $GITHUB_STEP_SUMMARY
+            for f in "$MIGRATION_DIR"/*.sql; do
+              if [ -f "$f" ]; then
+                FILENAME=$(basename "$f")
+                echo "- \`$FILENAME\`" >> $GITHUB_STEP_SUMMARY
+
+                # Basic SQL validation
+                if grep -qi "DROP TABLE\|DROP DATABASE\|TRUNCATE" "$f"; then
+                  echo "  - WARNING: Contains destructive operations" >> $GITHUB_STEP_SUMMARY
+                fi
+              fi
+            done
+          else
+            echo "No migration directory found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Run migrations on Railway database
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL not set, skipping migrations"
+            exit 0
+          fi
+
+          MIGRATION_DIR="fastapi-backend/migrations"
+          if [ -d "$MIGRATION_DIR" ]; then
+            for sql_file in $(ls "$MIGRATION_DIR"/*.sql 2>/dev/null | sort); do
+              echo "Running migration: $(basename $sql_file)"
+              PGPASSWORD=$(echo $DATABASE_URL | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p') \
+              psql "$DATABASE_URL" -f "$sql_file" \
+                -v ON_ERROR_STOP=1 \
+                || { echo "Migration failed: $(basename $sql_file)"; exit 1; }
+              echo "Completed: $(basename $sql_file)"
+            done
+          fi
+
+      - name: Validate schema integrity
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL not set, skipping schema validation"
+            exit 0
+          fi
+
+          python3 << 'PYEOF'
+          import os
+          import sys
+
+          try:
+              from sqlalchemy import create_engine, inspect
+
+              engine = create_engine(os.environ["DATABASE_URL"])
+              inspector = inspect(engine)
+              tables = inspector.get_table_names()
+
+              print("Schema validation results:")
+              print(f"  Tables found: {len(tables)}")
+              for table in sorted(tables):
+                  columns = inspector.get_columns(table)
+                  print(f"  - {table}: {len(columns)} columns")
+
+              # Verify critical tables exist
+              required_tables = ["users", "subscriptions"]
+              missing = [t for t in required_tables if t not in tables]
+
+              if missing:
+                  print(f"\nWARNING: Missing expected tables: {missing}")
+              else:
+                  print("\nAll required tables present.")
+
+              engine.dispose()
+          except Exception as e:
+              print(f"Schema validation error: {e}")
+              sys.exit(1)
+          PYEOF
+
+  # ---------------------------------------------------------------------------
+  # Deploy Backend to Railway
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [pre-checks, backend-tests, database-migrations]
+    if: |
+      always()
+      && (needs.backend-tests.result == 'success' || needs.backend-tests.result == 'skipped')
+      && (needs.database-migrations.result == 'success' || needs.database-migrations.result == 'skipped')
+      && (needs.pre-checks.outputs.backend_changed == 'true' || github.event.inputs.deploy_backend == 'true')
+    environment:
+      name: production-backend
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy to Railway
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd fastapi-backend
+          railway up --service fastapi-backend --detach
+          DEPLOY_URL="https://$(railway domain --service fastapi-backend 2>/dev/null || echo 'pending')"
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+
+      - name: Health check with retry
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          if [ "$DEPLOY_URL" = "https://pending" ]; then
+            echo "Deployment URL not available yet, skipping health check"
+            exit 0
+          fi
+
+          echo "Checking deployment health at: $DEPLOY_URL/health"
+          for i in $(seq 1 30); do
+            RESPONSE=$(curl -s -w "\n%{http_code}" "${DEPLOY_URL}/health" 2>/dev/null || echo -e "\n000")
+            STATUS=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | head -1)
+
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy!"
+              echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+              exit 0
+            fi
+            echo "Attempt $i/30: HTTP $STATUS - retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Health check failed after 5 minutes"
+          exit 1
+
+      - name: Create deployment record
+        if: success()
+        run: |
+          echo "## Backend Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ steps.deploy.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${GITHUB_SHA::8}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Healthy |" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Deploy Frontend to Vercel
+  # ---------------------------------------------------------------------------
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: [pre-checks, frontend-tests, deploy-backend]
+    if: |
+      always()
+      && (needs.frontend-tests.result == 'success' || needs.frontend-tests.result == 'skipped')
+      && (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
+      && (needs.pre-checks.outputs.frontend_changed == 'true' || github.event.inputs.deploy_frontend == 'true')
+    environment:
+      name: production-frontend
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Deploy to Vercel
+        id: deploy
+        working-directory: nextjs-frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+
+      - name: Verify frontend deployment
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            for i in $(seq 1 15); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL" || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "Frontend is live at $DEPLOY_URL"
+                exit 0
+              fi
+              echo "Attempt $i/15: HTTP $STATUS - waiting 10s..."
+              sleep 10
+            done
+            echo "Frontend verification timed out"
+            exit 1
+          fi
+
+      - name: Create deployment record
+        if: success()
+        run: |
+          echo "## Frontend Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ steps.deploy.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${GITHUB_SHA::8}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Live |" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Post-deployment Smoke Tests
+  # ---------------------------------------------------------------------------
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: |
+      always()
+      && (needs.deploy-backend.result == 'success' || needs.deploy-frontend.result == 'success')
+    steps:
+      - name: Backend smoke test
+        if: needs.deploy-backend.result == 'success'
+        run: |
+          BACKEND_URL="${{ needs.deploy-backend.outputs.url }}"
+          if [ -n "$BACKEND_URL" ] && [ "$BACKEND_URL" != "https://pending" ]; then
+            echo "Testing backend endpoints..."
+
+            # Health check
+            curl -sf "${BACKEND_URL}/health" | python3 -m json.tool
+            echo "Health: OK"
+
+            # API docs
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/docs")
+            echo "Docs endpoint: HTTP $STATUS"
+
+            # Root endpoint
+            curl -sf "${BACKEND_URL}/" | python3 -m json.tool
+            echo "Root: OK"
+          fi
+
+      - name: Frontend smoke test
+        if: needs.deploy-frontend.result == 'success'
+        run: |
+          FRONTEND_URL="${{ needs.deploy-frontend.outputs.url }}"
+          if [ -n "$FRONTEND_URL" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+            echo "Frontend status: HTTP $STATUS"
+
+            if [ "$STATUS" != "200" ]; then
+              echo "Frontend smoke test failed"
+              exit 1
+            fi
+            echo "Frontend: OK"
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "## Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${GITHUB_SHA::8}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ needs.deploy-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.deploy-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Rollback on Failure
+  # ---------------------------------------------------------------------------
+  rollback-notification:
+    name: Rollback Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend, smoke-tests]
+    if: failure()
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Production deployment failed - ${context.sha.substring(0, 8)}`;
+            const body = `## Production Deployment Failure
+
+            **Commit:** ${context.sha}
+            **Branch:** ${context.ref}
+            **Actor:** ${context.actor}
+            **Workflow Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+
+            ### Status
+            | Component | Result |
+            |-----------|--------|
+            | Backend Deploy | ${{ needs.deploy-backend.result }} |
+            | Frontend Deploy | ${{ needs.deploy-frontend.result }} |
+            | Smoke Tests | ${{ needs.smoke-tests.result }} |
+
+            ### Rollback Instructions
+            1. Go to Railway dashboard and rollback to previous deployment
+            2. Go to Vercel dashboard and rollback to previous deployment
+            3. Or use manual workflow dispatch to redeploy a known good commit
+
+            ### Investigation
+            - Check the [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details
+            - Review deployment logs in Railway/Vercel dashboards
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment-failure', 'urgent']
+            });

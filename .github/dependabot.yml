@@ -1,0 +1,198 @@
+# =============================================================================
+# Dependabot Configuration
+# =============================================================================
+# Automatically creates PRs for dependency updates across all package ecosystems
+
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # Python dependencies (root)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "koscom"
+    labels:
+      - "dependencies"
+      - "python"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      python-minor:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # Python dependencies (FastAPI backend)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/fastapi-backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "koscom"
+    labels:
+      - "dependencies"
+      - "python"
+      - "backend"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps-backend)"
+    groups:
+      fastapi-deps:
+        patterns:
+          - "fastapi*"
+          - "uvicorn*"
+          - "pydantic*"
+        update-types:
+          - "minor"
+          - "patch"
+      database-deps:
+        patterns:
+          - "sqlalchemy*"
+          - "psycopg2*"
+          - "alembic*"
+          - "redis*"
+        update-types:
+          - "minor"
+          - "patch"
+      security-deps:
+        patterns:
+          - "passlib*"
+          - "python-jose*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # npm dependencies (Next.js frontend)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/nextjs-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "koscom"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "frontend"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps-frontend)"
+    groups:
+      next-ecosystem:
+        patterns:
+          - "next"
+          - "next-*"
+          - "@next/*"
+          - "eslint-config-next"
+        update-types:
+          - "minor"
+          - "patch"
+      react-ecosystem:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      ui-libraries:
+        patterns:
+          - "recharts"
+          - "lucide-react"
+          - "tailwindcss"
+          - "autoprefixer"
+          - "postcss"
+        update-types:
+          - "minor"
+          - "patch"
+      state-management:
+        patterns:
+          - "@tanstack/*"
+          - "zustand"
+          - "axios"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-tools:
+        patterns:
+          - "@playwright/*"
+          - "typescript"
+          - "eslint*"
+          - "@types/*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major version bumps for framework packages (manual review needed)
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+  # ---------------------------------------------------------------------------
+  # Docker dependencies
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/fastapi-backend"
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    reviewers:
+      - "koscom"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps-docker)"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "koscom"
+    labels:
+      - "dependencies"
+      - "ci/cd"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps-actions)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

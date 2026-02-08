@@ -1,0 +1,93 @@
+================================================================================
+FASTAPI BACKEND - COMPLETE ENDPOINT LIST
+================================================================================
+
+Total Endpoints: 24 (including cache management)
+Dataset: 63,809 apartment transactions
+
+================================================================================
+HEALTH & INFO (2 endpoints)
+================================================================================
+1.  GET    /health                                 Health check
+2.  GET    /                                       API information
+
+================================================================================
+ANALYSIS (3 endpoints + 1 utility)
+================================================================================
+3.  POST   /api/v1/analysis/basic-stats            Basic statistics
+4.  POST   /api/v1/analysis/price-trend            Price trends over time
+5.  POST   /api/v1/analysis/regional               Regional comparison
+6.  POST   /api/v1/analysis/cache/clear            Clear cache (utility)
+
+================================================================================
+SEGMENTATION (5 endpoints)
+================================================================================
+7.  POST   /api/v1/analysis/by-area                Analyze by area size
+8.  POST   /api/v1/analysis/by-floor               Analyze by floor level
+9.  POST   /api/v1/analysis/by-build-year          Analyze by construction year
+10. POST   /api/v1/analysis/by-apartment           Analyze by apartment complex
+11. POST   /api/v1/analysis/apartment-detail       Specific apartment details
+
+================================================================================
+PREMIUM (4 endpoints)
+================================================================================
+12. POST   /api/v1/premium/price-per-area          Price per area (평당가)
+13. POST   /api/v1/premium/price-per-area-trend    Price per area trends
+14. POST   /api/v1/premium/floor-premium           Floor premium analysis
+15. POST   /api/v1/premium/building-age-premium    Building age premium
+
+================================================================================
+INVESTMENT (3 endpoints)
+================================================================================
+16. POST   /api/v1/investment/jeonse-ratio         Jeonse ratio (전세가율)
+17. POST   /api/v1/investment/gap-investment       Gap investment opportunities
+18. POST   /api/v1/investment/bargain-sales        Bargain sales detection
+
+================================================================================
+MARKET (8 endpoints)
+================================================================================
+19. POST   /api/v1/market/rent-vs-jeonse           Rent vs jeonse comparison
+20. POST   /api/v1/market/dealing-type             Dealing type distribution
+21. POST   /api/v1/market/buyer-seller-type        Buyer/seller type analysis
+22. POST   /api/v1/market/cancelled-deals          Cancelled deals analysis
+23. POST   /api/v1/market/period-summary           Period summary
+24. POST   /api/v1/market/baseline-summary         Baseline (previous period)
+25. POST   /api/v1/market/compare-periods          Period-over-period comparison
+26. POST   /api/v1/market/signals                  Market signals detection
+
+================================================================================
+COMMON PARAMETERS
+================================================================================
+All analysis endpoints support:
+  - region_filter: "강남구" (optional)
+  - start_date: "2023-01-01" (optional, YYYY-MM-DD)
+  - end_date: "2023-12-31" (optional, YYYY-MM-DD)
+
+================================================================================
+QUICK START
+================================================================================
+1. Start server:
+   python main.py
+
+2. View documentation:
+   http://localhost:8000/docs
+
+3. Test endpoint:
+   curl -X POST http://localhost:8000/api/v1/analysis/basic-stats \
+     -H "Content-Type: application/json" \
+     -d '{"region_filter": "강남구"}'
+
+4. Run all tests:
+   python test_new_endpoints.py
+
+================================================================================
+DOCUMENTATION
+================================================================================
+- Complete API docs: API_ENDPOINTS.md
+- Quick reference: QUICK_REFERENCE.md
+- Implementation details: IMPLEMENTATION_SUMMARY.md
+- Setup guide: README.md
+
+================================================================================
+STATUS: ✅ ALL 20 NEW ENDPOINTS IMPLEMENTED & TESTED
+================================================================================

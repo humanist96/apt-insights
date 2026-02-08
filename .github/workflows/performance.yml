@@ -1,0 +1,346 @@
+name: Performance Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'fastapi-backend/**'
+      - 'backend/**'
+      - 'tests/load/**'
+      - 'scripts/benchmark.py'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'Number of benchmark iterations'
+        required: false
+        default: '50'
+
+jobs:
+  performance-check:
+    name: Quick Performance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apt_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+
+      - name: Setup database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_test
+        run: |
+          cd fastapi-backend
+          # Run migrations if needed
+          # alembic upgrade head
+
+      - name: Start FastAPI server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd fastapi-backend
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+
+      - name: Wait for API to be ready
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+
+      - name: Run quick performance check
+        run: |
+          python scripts/performance_check.py
+
+      - name: Run benchmark
+        run: |
+          python scripts/benchmark.py \
+            --host http://localhost:8000 \
+            --iterations ${{ github.event.inputs.iterations || '50' }} \
+            --output benchmark_results.json
+
+      - name: Validate performance targets
+        run: |
+          python -c "
+          import json
+          import sys
+
+          with open('benchmark_results.json') as f:
+              data = json.load(f)
+
+          summary = data['summary']
+
+          # Performance targets
+          targets = {
+              'avg_p95_ms': 200,
+              'avg_p99_ms': 500,
+              'failed_requests': 0
+          }
+
+          failed = []
+
+          # Check p95
+          if summary['avg_p95_ms'] > targets['avg_p95_ms']:
+              failed.append(f\"p95 {summary['avg_p95_ms']:.2f}ms exceeds {targets['avg_p95_ms']}ms\")
+
+          # Check p99
+          if summary['avg_p99_ms'] > targets['avg_p99_ms']:
+              failed.append(f\"p99 {summary['avg_p99_ms']:.2f}ms exceeds {targets['avg_p99_ms']}ms\")
+
+          # Check failures
+          if summary['failed_requests'] > targets['failed_requests']:
+              failed.append(f\"{summary['failed_requests']} requests failed\")
+
+          if failed:
+              print('❌ Performance checks failed:')
+              for f in failed:
+                  print(f'  - {f}')
+              sys.exit(1)
+          else:
+              print('✅ All performance checks passed')
+              print(f\"  p95: {summary['avg_p95_ms']:.2f}ms\")
+              print(f\"  p99: {summary['avg_p99_ms']:.2f}ms\")
+          "
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('benchmark_results.json', 'utf8'));
+
+            const summary = data.summary;
+            const slowest = data.slowest_endpoints.slice(0, 5);
+
+            const body = `## Performance Benchmark Results
+
+            ### Summary
+            - **Total Requests**: ${summary.total_requests}
+            - **Successful**: ${summary.successful_requests}
+            - **Failed**: ${summary.failed_requests}
+            - **Average p95**: ${summary.avg_p95_ms.toFixed(2)}ms
+            - **Average p99**: ${summary.avg_p99_ms.toFixed(2)}ms
+
+            ### Top 5 Slowest Endpoints
+            ${slowest.map((e, i) => `${i+1}. \`${e.endpoint}\` - p95: ${e.p95_ms.toFixed(2)}ms`).join('\n')}
+
+            ${summary.avg_p95_ms < 200 ? '✅' : '❌'} Performance targets ${summary.avg_p95_ms < 200 ? 'met' : 'not met'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  load-test:
+    name: Load Test with Locust
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apt_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install locust
+
+      - name: Start FastAPI server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd fastapi-backend
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+
+      - name: Wait for API
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+
+      - name: Run load test
+        run: |
+          cd tests/load
+          mkdir -p results
+          locust -f locustfile.py \
+            --host http://localhost:8000 \
+            --headless \
+            --users 50 \
+            --spawn-rate 10 \
+            --run-time 3m \
+            --csv results/load_test \
+            --html results/load_test.html
+
+      - name: Analyze load test results
+        run: |
+          python -c "
+          import csv
+          import sys
+
+          stats_file = 'tests/load/results/load_test_stats.csv'
+
+          with open(stats_file) as f:
+              reader = csv.DictReader(f)
+              for row in reader:
+                  if row['Name'] == 'Aggregated':
+                      total = int(row['Request Count'])
+                      failures = int(row['Failure Count'])
+                      failure_rate = failures / total if total > 0 else 0
+
+                      print(f'Total requests: {total}')
+                      print(f'Failures: {failures}')
+                      print(f'Failure rate: {failure_rate:.2%}')
+
+                      if failure_rate > 0.01:  # 1% threshold
+                          print(f'❌ Failure rate {failure_rate:.2%} exceeds 1% threshold')
+                          sys.exit(1)
+                      else:
+                          print('✅ Load test passed')
+          "
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: tests/load/results/
+          retention-days: 30
+
+  database-optimization:
+    name: Database Query Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apt_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary structlog python-dotenv
+
+      - name: Enable pg_stat_statements
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d apt_test -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+
+      - name: Analyze slow queries
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_test
+        run: |
+          cd fastapi-backend
+          python db/query_optimizer.py || true
+
+      - name: Upload optimization report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimization-report
+          path: optimization_report_*.json
+          retention-days: 30
+          if-no-files-found: ignore

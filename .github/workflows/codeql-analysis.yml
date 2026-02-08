@@ -1,0 +1,226 @@
+# =============================================================================
+# CodeQL Security Analysis
+# =============================================================================
+# Automated code scanning for security vulnerabilities and code quality issues
+# Runs on push to main, PRs, and weekly schedule
+
+name: CodeQL Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run every Monday at 09:00 KST (00:00 UTC)
+    - cron: '0 0 * * 1'
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Python Analysis
+  # ---------------------------------------------------------------------------
+  analyze-python:
+    name: Analyze Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended,security-and-quality
+          config: |
+            paths:
+              - fastapi-backend
+              - backend
+              - tests
+            paths-ignore:
+              - '**/test_*.py'
+              - '**/*_test.py'
+              - '**/node_modules'
+              - '**/__pycache__'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+          output: python-results
+          upload: always
+
+      - name: Upload Python analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-python-results
+          path: python-results
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # JavaScript/TypeScript Analysis
+  # ---------------------------------------------------------------------------
+  analyze-javascript:
+    name: Analyze JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+          config: |
+            paths:
+              - nextjs-frontend
+            paths-ignore:
+              - '**/node_modules'
+              - '**/.next'
+              - '**/playwright-report'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+          output: javascript-results
+          upload: always
+
+      - name: Upload JavaScript analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-javascript-results
+          path: javascript-results
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Custom Security Checks
+  # ---------------------------------------------------------------------------
+  custom-security:
+    name: Custom Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "## Secret Scanning Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Common secret patterns
+          PATTERNS=(
+            'sk-[a-zA-Z0-9]{20,}'
+            'AKIA[0-9A-Z]{16}'
+            'ghp_[a-zA-Z0-9]{36}'
+            'gho_[a-zA-Z0-9]{36}'
+            'github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}'
+            'password\s*=\s*["\x27][^"\x27]{8,}["\x27]'
+          )
+
+          FOUND=false
+          for pattern in "${PATTERNS[@]}"; do
+            RESULTS=$(grep -rn "$pattern" \
+              --include="*.py" \
+              --include="*.ts" \
+              --include="*.tsx" \
+              --include="*.js" \
+              --include="*.json" \
+              --include="*.yml" \
+              --include="*.yaml" \
+              --exclude-dir=node_modules \
+              --exclude-dir=.next \
+              --exclude-dir=.git \
+              --exclude="*.example" \
+              --exclude="*.lock" \
+              --exclude="package-lock.json" \
+              . 2>/dev/null || true)
+
+            if [ -n "$RESULTS" ]; then
+              FOUND=true
+              echo "WARNING: Potential secrets found matching pattern: $pattern" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "$RESULTS" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          if [ "$FOUND" = "false" ]; then
+            echo "No hardcoded secrets detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for sensitive files
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Sensitive File Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          SENSITIVE_FILES=(
+            ".env"
+            ".env.local"
+            ".env.production"
+            "credentials.json"
+            "secrets.json"
+            "config.py"
+            "*.pem"
+            "*.key"
+            "*.crt"
+          )
+
+          TRACKED=false
+          for pattern in "${SENSITIVE_FILES[@]}"; do
+            FILES=$(git ls-files "$pattern" 2>/dev/null || true)
+            if [ -n "$FILES" ]; then
+              TRACKED=true
+              echo "WARNING: Sensitive file tracked by git: $FILES" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          if [ "$TRACKED" = "false" ]; then
+            echo "No sensitive files tracked by git." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action required:** Remove sensitive files from git tracking and add to .gitignore" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Check CORS configuration
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## CORS Configuration Review" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for wildcard CORS
+          WILDCARD=$(grep -rn "allow_origins.*\*\|origins.*\*\|'*'" \
+            --include="*.py" \
+            --exclude-dir=node_modules \
+            --exclude-dir=.git \
+            . 2>/dev/null || true)
+
+          if [ -n "$WILDCARD" ]; then
+            echo "WARNING: Wildcard CORS origin detected:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$WILDCARD" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No wildcard CORS origins found." >> $GITHUB_STEP_SUMMARY
+          fi

@@ -1,0 +1,374 @@
+# =============================================================================
+# PR Checks Pipeline
+# =============================================================================
+# Runs on every pull request - lint, test, type check for all components
+# Provides consolidated status check for branch protection
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect Changes
+  # ---------------------------------------------------------------------------
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'fastapi-backend/**'
+              - 'backend/**'
+              - 'tests/**'
+              - 'requirements.txt'
+            frontend:
+              - 'nextjs-frontend/**'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+
+  # ---------------------------------------------------------------------------
+  # Backend PR Checks
+  # ---------------------------------------------------------------------------
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linters
+        run: pip install ruff mypy
+
+      - name: Ruff lint check
+        run: ruff check fastapi-backend/ backend/ tests/ --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check fastapi-backend/ backend/ tests/
+
+  backend-typecheck:
+    name: Backend Type Check
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install mypy types-requests
+
+      - name: Run mypy
+        run: |
+          mypy fastapi-backend/ \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --exclude 'test_.*\.py$'
+        continue-on-error: true
+
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: apt_insights_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apt_insights_test
+      REDIS_URL: redis://localhost:6379/0
+      USE_DATABASE: 'true'
+      USE_REDIS: 'true'
+      SECRET_KEY: test-secret-key-for-ci-pipeline-only
+      SERVICE_KEY: test-service-key
+      ENVIRONMENT: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r fastapi-backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=backend \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            --tb=short \
+            --junitxml=test-results.xml \
+            -v
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Post coverage comment
+        if: always()
+        uses: orgoro/coverage@v3.2
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          thresholdAll: 0.80
+        continue-on-error: true
+
+  backend-security:
+    name: Backend Security
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run Bandit
+        run: |
+          pip install bandit
+          bandit -r fastapi-backend/ backend/ \
+            --severity-level medium \
+            -x '**/test_*.py' \
+            || true
+
+  # ---------------------------------------------------------------------------
+  # Frontend PR Checks
+  # ---------------------------------------------------------------------------
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: nextjs-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: nextjs-frontend
+
+      - name: ESLint
+        run: npm run lint
+        working-directory: nextjs-frontend
+
+  frontend-typecheck:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: nextjs-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: nextjs-frontend
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        working-directory: nextjs-frontend
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [detect-changes, frontend-lint, frontend-typecheck]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: nextjs-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: nextjs-frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: nextjs-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_TELEMETRY_DISABLED: 1
+
+  frontend-security:
+    name: Frontend Security
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: nextjs-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: nextjs-frontend
+
+      - name: npm audit
+        run: npm audit --audit-level=critical --omit=dev
+        working-directory: nextjs-frontend
+
+  # ---------------------------------------------------------------------------
+  # PR Summary
+  # ---------------------------------------------------------------------------
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - backend-lint
+      - backend-typecheck
+      - backend-test
+      - backend-security
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-build
+      - frontend-security
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## PR Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.backend-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type Check | ${{ needs.backend-typecheck.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.backend-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.backend-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Frontend" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.frontend-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type Check | ${{ needs.frontend-typecheck.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.frontend-build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.frontend-security.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for failures
+        run: |
+          BACKEND_CHANGED="${{ needs.detect-changes.outputs.backend }}"
+          FRONTEND_CHANGED="${{ needs.detect-changes.outputs.frontend }}"
+
+          FAILED=false
+
+          if [ "$BACKEND_CHANGED" = "true" ]; then
+            if [ "${{ needs.backend-lint.result }}" = "failure" ] || \
+               [ "${{ needs.backend-test.result }}" = "failure" ]; then
+              FAILED=true
+            fi
+          fi
+
+          if [ "$FRONTEND_CHANGED" = "true" ]; then
+            if [ "${{ needs.frontend-lint.result }}" = "failure" ] || \
+               [ "${{ needs.frontend-build.result }}" = "failure" ]; then
+              FAILED=true
+            fi
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            echo "One or more required checks failed"
+            exit 1
+          fi

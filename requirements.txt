@@ -17,3 +17,25 @@ structlog>=23.1.0
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-asyncio>=0.21.0
+
+# Phase 1: PostgreSQL (Week 3-4)
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+alembic>=1.12.0
+
+# Phase 1: Async + Redis (Week 5-6)
+aiohttp>=3.9.0
+aiodns>=3.1.0
+redis>=5.0.0
+hiredis>=2.3.0
+
+# Phase 1: Progress bars
+tqdm>=4.66.0
+
+# Monitoring and observability
+sentry-sdk>=2.19.0
+prometheus-client>=0.21.0
+
+# Performance testing and optimization
+locust>=2.31.0
+psutil>=6.0.0

@@ -1,13 +1,36 @@
 """
 데이터 로더 모듈
-output 디렉토리의 JSON 파일을 로드하고 중복을 제거하며 데이터를 정규화합니다.
+output 디렉토리의 JSON 파일을 로드하거나 PostgreSQL에서 데이터를 가져옵니다.
+USE_DATABASE 환경변수로 모드 전환 (True: DB, False: JSON)
 """
+import os
 import json
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import re
 import traceback
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
+
+# 데이터베이스 사용 여부 (기본값: False, JSON 모드)
+USE_DATABASE = os.getenv('USE_DATABASE', 'False').lower() == 'true'
+
+# 데이터베이스 모드일 때만 import
+if USE_DATABASE:
+    try:
+        from .db.repository import TransactionRepository
+        from .db.session import get_session
+        DATABASE_AVAILABLE = True
+    except ImportError as e:
+        print(f"⚠️  데이터베이스 모듈 로드 실패: {e}")
+        print("   JSON 모드로 폴백합니다.")
+        DATABASE_AVAILABLE = False
+        USE_DATABASE = False
+else:
+    DATABASE_AVAILABLE = False
 
 
 def _get_field_value(item: Dict, *keys: str) -> str:
@@ -20,18 +43,67 @@ def _get_field_value(item: Dict, *keys: str) -> str:
 
 def load_all_json_data(base_path: Optional[Path] = None, debug: bool = False) -> Tuple[List[Dict], Dict]:
     """
-    모든 output 디렉토리에서 test_results JSON 파일을 로드하고 통합
-    
+    데이터 로드 (Dual-Mode: JSON 또는 PostgreSQL)
+
+    USE_DATABASE 환경변수에 따라 데이터 소스 결정:
+    - True: PostgreSQL에서 로드
+    - False (기본값): JSON 파일에서 로드
+
     주의: 실제 JSON 파일에서만 데이터를 로드합니다. 목업 데이터를 사용하지 않습니다.
-    
+
     Args:
         base_path: 프로젝트 루트 경로 (None이면 현재 파일 기준 상대 경로 사용)
         debug: 디버깅 정보 반환 여부
-    
+
     Returns:
         (items 리스트, 디버깅 정보 딕셔너리)
-        - items: 실제 JSON 파일의 items를 통합한 리스트 (데이터가 없으면 빈 리스트)
+        - items: 거래 데이터 리스트 (데이터가 없으면 빈 리스트)
         - debug_info: 디버깅 정보 (성공/실패 파일 목록, 오류 메시지 등)
+    """
+    # 데이터베이스 모드
+    if USE_DATABASE and DATABASE_AVAILABLE:
+        print("📊 데이터베이스 모드: PostgreSQL에서 데이터 로드")
+        return _load_from_database()
+
+    # JSON 모드 (기본값)
+    print("📁 JSON 모드: 파일에서 데이터 로드")
+    return _load_from_json(base_path, debug)
+
+
+def _load_from_database() -> Tuple[List[Dict], Dict]:
+    """
+    PostgreSQL에서 데이터 로드
+
+    Returns:
+        (items 리스트, 디버깅 정보 딕셔너리)
+    """
+    try:
+        with get_session() as session:
+            repository = TransactionRepository(session)
+            items, debug_info = repository.load_all_transactions()
+
+            # 모드 표시
+            debug_info['data_source'] = 'postgresql'
+            debug_info['use_database'] = True
+
+            return items, debug_info
+
+    except Exception as e:
+        print(f"⚠️  데이터베이스 로드 실패: {e}")
+        print("   JSON 모드로 폴백합니다.")
+        return _load_from_json(None, False)
+
+
+def _load_from_json(base_path: Optional[Path] = None, debug: bool = False) -> Tuple[List[Dict], Dict]:
+    """
+    JSON 파일에서 데이터 로드 (기존 로직)
+
+    Args:
+        base_path: 프로젝트 루트 경로
+        debug: 디버깅 정보 반환 여부
+
+    Returns:
+        (items 리스트, 디버깅 정보 딕셔너리)
     """
     if base_path is None:
         # 현재 파일 기준으로 프로젝트 루트 찾기
