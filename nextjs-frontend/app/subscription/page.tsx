@@ -1,20 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import PremiumBadge from '@/components/premium/PremiumBadge';
-import Card from '@/components/ui/Card';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { Crown, Check, X, Calendar, BarChart3, AlertCircle, Sparkles, TrendingUp, ChevronDown, ChevronUp, Zap } from "lucide-react";
 
 export default function SubscriptionPage() {
   const { subscription, plans, isPremium, isLoading, upgrade, cancel } = useSubscription();
   const [upgrading, setUpgrading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   const handleUpgrade = async (planId: string) => {
-    if (upgrading) {
-      return;
-    }
-
+    if (upgrading) return;
     setUpgrading(true);
     try {
       const result = await upgrade(planId);
@@ -29,10 +27,7 @@ export default function SubscriptionPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm('정말 구독을 취소하시겠습니까?')) {
-      return;
-    }
-
+    if (!confirm("정말 구독을 취소하시겠습니까?")) return;
     setCancelling(true);
     try {
       const result = await cancel();
@@ -48,436 +43,458 @@ export default function SubscriptionPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div
+            className="absolute left-1/4 top-20 h-96 w-96 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 opacity-10 blur-3xl"
+            animate={{ y: [0, 50, 0], scale: [1, 1.2, 1] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        <div className="container relative mx-auto px-4 py-16">
+          <div className="mb-12">
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-4xl font-bold text-transparent"
+            >
+              구독 관리
+            </motion.h1>
+            <p className="text-lg text-slate-400">프리미엄 플랜으로 더 많은 기능을 이용하세요</p>
+          </div>
+
+          <div className="space-y-8">
+            <div className="h-64 w-full animate-pulse rounded-3xl bg-white/5"></div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="h-96 animate-pulse rounded-3xl bg-white/5"></div>
+              <div className="h-96 animate-pulse rounded-3xl bg-white/5"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const freePlan = plans.find((p) => p.tier === 'free');
-  const premiumPlan = plans.find((p) => p.tier === 'premium');
+  const freePlan = plans.find((p) => p.tier === "free");
+  const premiumPlan = plans.find((p) => p.tier === "premium");
+
+  const usagePercentage = subscription?.usage?.unlimited
+    ? 0
+    : ((subscription?.usage?.used || 0) / (subscription?.usage?.limit || 10)) * 100;
+
+  const faqs = [
+    {
+      question: "프리미엄 플랜의 혜택은 무엇인가요?",
+      answer:
+        "무제한 API 호출, CSV/PDF 내보내기, 포트폴리오 관리, 가격 알림, 월간 자동 리포트, AI 인사이트 등 모든 프리미엄 기능을 이용할 수 있습니다.",
+    },
+    {
+      question: "언제든지 해지할 수 있나요?",
+      answer: "네, 언제든지 구독을 해지할 수 있습니다. 해지 시 구독 기간이 끝나면 자동으로 무료 플랜으로 전환됩니다.",
+    },
+    {
+      question: "무료 플랜으로 다운그레이드할 수 있나요?",
+      answer:
+        "네, 구독을 취소하면 만료일까지 프리미엄 혜택을 이용할 수 있으며, 만료 후 자동으로 무료 플랜으로 전환됩니다.",
+    },
+    {
+      question: "결제는 어떻게 진행되나요?",
+      answer: "현재는 데모 버전으로 실제 결제가 진행되지 않습니다. 프리미엄 기능을 체험하실 수 있습니다.",
+    },
+    {
+      question: "API 사용량은 언제 초기화되나요?",
+      answer: "무료 플랜의 API 사용량은 매일 자정(KST)에 자동으로 초기화됩니다.",
+    },
+  ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-2 text-3xl font-bold text-gray-900">구독 관리</h1>
-      <p className="mb-8 text-gray-600">
-        현재 플랜을 확인하고 프리미엄으로 업그레이드하세요
-      </p>
-
-      {subscription && (
-        <Card className="mb-8">
-          <h2 className="mb-4 text-xl font-bold text-gray-900">현재 구독</h2>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {subscription.plan_name}
-            </span>
-            {isPremium && <PremiumBadge size="md" />}
-          </div>
-
-          <div className="mb-4">
-            <h3 className="mb-2 font-semibold text-gray-900">API 사용량</h3>
-            <div className="rounded-lg bg-gray-50 p-4">
-              {subscription.usage.unlimited ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-green-600">
-                    무제한
-                  </span>
-                  <svg
-                    className="h-6 w-6 text-green-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      오늘 사용량
-                    </span>
-                    <span className="font-semibold text-gray-900">
-                      {subscription.usage.used} / {subscription.usage.limit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className={`h-full transition-all ${
-                        subscription.usage.percentage >= 80
-                          ? 'bg-red-500'
-                          : subscription.usage.percentage >= 50
-                          ? 'bg-yellow-500'
-                          : 'bg-green-500'
-                      }`}
-                      style={{
-                        width: `${Math.min(subscription.usage.percentage, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    매일 자정에 초기화됩니다
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {isPremium && subscription.expires_at && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-600">
-                만료일: {new Date(subscription.expires_at).toLocaleDateString('ko-KR')}
-              </p>
-            </div>
-          )}
-
-          {isPremium && (
-            <button
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              {cancelling ? '취소 중...' : '구독 취소'}
-            </button>
-          )}
-        </Card>
-      )}
-
-      <h2 className="mb-6 text-2xl font-bold text-gray-900">구독 플랜</h2>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {freePlan && (
-          <Card className={`${!isPremium ? 'ring-2 ring-blue-500' : ''}`}>
-            <div className="mb-4">
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
-                {freePlan.name}
-              </h3>
-              <p className="text-gray-600">{freePlan.description}</p>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-3xl font-bold text-gray-900">무료</span>
-            </div>
-
-            <div className="mb-6 space-y-3">
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm text-gray-700">
-                  하루 {freePlan.features.api_calls_per_day}회 API 호출
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm text-gray-700">
-                  기본 분석 기능
-                </span>
-              </div>
-              <div className="flex items-start opacity-50">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                <span className="text-sm text-gray-500">
-                  CSV 내보내기
-                </span>
-              </div>
-              <div className="flex items-start opacity-50">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                <span className="text-sm text-gray-500">
-                  PDF 리포트
-                </span>
-              </div>
-              <div className="flex items-start opacity-50">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                <span className="text-sm text-gray-500">
-                  포트폴리오 추적
-                </span>
-              </div>
-              <div className="flex items-start opacity-50">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                <span className="text-sm text-gray-500">
-                  가격 알림
-                </span>
-              </div>
-            </div>
-
-            {!isPremium && (
-              <div className="rounded-lg bg-blue-50 p-3 text-center text-sm text-blue-700">
-                현재 플랜
-              </div>
-            )}
-          </Card>
-        )}
-
-        {premiumPlan && (
-          <Card
-            className={`relative ${
-              isPremium ? 'ring-2 ring-orange-500' : 'border-2 border-orange-200'
-            }`}
-          >
-            {premiumPlan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-orange-500 px-4 py-1 text-sm font-semibold text-white">
-                  추천
-                </span>
-              </div>
-            )}
-
-            <div className="mb-4">
-              <div className="mb-2 flex items-center gap-2">
-                <h3 className="text-xl font-bold text-gray-900">
-                  {premiumPlan.name}
-                </h3>
-                <PremiumBadge size="sm" />
-              </div>
-              <p className="text-gray-600">{premiumPlan.description}</p>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-3xl font-bold text-gray-900">
-                {premiumPlan.price_monthly.toLocaleString()}원
-              </span>
-              <span className="text-gray-600">/월</span>
-              {premiumPlan.price_yearly && (
-                <p className="mt-1 text-sm text-gray-600">
-                  연간 결제 시 {premiumPlan.price_yearly.toLocaleString()}원
-                  (2개월 무료)
-                </p>
-              )}
-            </div>
-
-            <div className="mb-6 space-y-3">
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  무제한 API 호출
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm text-gray-700">
-                  기본 분석 기능
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  CSV 데이터 내보내기
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  PDF 리포트 생성
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  포트폴리오 추적 (최대 {premiumPlan.features.max_portfolios}개)
-                </span>
-              </div>
-              <div className="flex items-start">
-                <svg
-                  className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">
-                  가격 알림 설정 (최대 {premiumPlan.features.max_alerts}개)
-                </span>
-              </div>
-            </div>
-
-            {isPremium ? (
-              <div className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 p-3 text-center text-sm font-semibold text-white">
-                현재 플랜
-              </div>
-            ) : (
-              <button
-                onClick={() => handleUpgrade(premiumPlan.plan_id)}
-                disabled={upgrading}
-                className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {upgrading ? '업그레이드 중...' : '프리미엄 시작하기'}
-              </button>
-            )}
-          </Card>
-        )}
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-600/20 via-orange-600/10 to-transparent"></div>
+        <motion.div
+          className="absolute left-1/4 top-20 h-96 w-96 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 opacity-10 blur-3xl"
+          animate={{
+            y: [0, 50, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        <motion.div
+          className="absolute right-1/3 top-40 h-80 w-80 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 opacity-10 blur-3xl"
+          animate={{
+            y: [0, -30, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
       </div>
 
-      <div className="mt-8 rounded-lg bg-gray-50 p-6">
-        <h3 className="mb-4 font-semibold text-gray-900">자주 묻는 질문</h3>
-        <div className="space-y-4">
-          <div>
-            <p className="font-medium text-gray-900">
-              언제든지 구독을 취소할 수 있나요?
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              네, 언제든지 구독을 취소할 수 있습니다. 구독 기간이 끝나면 자동으로 무료 플랜으로 전환됩니다.
-            </p>
+      <div className="container relative mx-auto px-4 py-16">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12"
+        >
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2">
+            <Crown className="h-4 w-4 text-amber-400" />
+            <span className="text-sm font-semibold text-amber-300">구독 관리</span>
           </div>
-          <div>
-            <p className="font-medium text-gray-900">
-              결제는 어떻게 진행되나요?
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              현재는 데모 버전으로 실제 결제가 진행되지 않습니다. 프리미엄 기능을 체험하실 수 있습니다.
-            </p>
+          <h1 className="mb-4 bg-gradient-to-r from-white via-amber-100 to-orange-200 bg-clip-text text-5xl font-bold text-transparent">
+            구독 관리
+          </h1>
+          <p className="text-xl text-slate-400">프리미엄 플랜으로 더 많은 기능을 이용하세요</p>
+        </motion.div>
+
+        {/* Current Subscription Card */}
+        {subscription && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-12 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm"
+          >
+            <div className="border-b border-white/10 p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="mb-2 text-2xl font-bold text-white">현재 구독</h2>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 ${
+                        isPremium
+                          ? "border-amber-500/20 bg-amber-500/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      {isPremium && <Crown className="h-4 w-4 text-amber-400" />}
+                      <span
+                        className={`font-semibold ${
+                          isPremium
+                            ? "bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent"
+                            : "text-slate-300"
+                        }`}
+                      >
+                        {subscription.plan_name}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                {isPremium && subscription.expires_at && (
+                  <div className="text-right">
+                    <p className="mb-1 text-sm text-slate-400">만료일</p>
+                    <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                      <Calendar className="h-5 w-5 text-amber-400" />
+                      {new Date(subscription.expires_at).toLocaleDateString("ko-KR")}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Usage Stats */}
+            <div className="p-8">
+              <div className="mb-6">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-blue-400" />
+                    <span className="font-medium text-white">API 사용량</span>
+                  </div>
+                  {subscription.usage?.unlimited ? (
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-green-400" />
+                      <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-sm font-semibold text-transparent">
+                        무제한
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">
+                      {subscription.usage?.used || 0} / {subscription.usage?.limit || 10}
+                    </span>
+                  )}
+                </div>
+                {!subscription.usage?.unlimited && (
+                  <>
+                    <div className="h-3 overflow-hidden rounded-full bg-white/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className={`h-full rounded-full ${
+                          usagePercentage >= 90
+                            ? "bg-gradient-to-r from-red-500 to-rose-500"
+                            : usagePercentage >= 70
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                              : "bg-gradient-to-r from-blue-500 to-cyan-500"
+                        }`}
+                      ></motion.div>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">매일 자정에 초기화됩니다</p>
+                  </>
+                )}
+              </div>
+
+              {!isPremium && usagePercentage >= 70 && (
+                <div className="mb-6 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-400" />
+                    <div>
+                      <p className="mb-1 font-medium text-amber-300">API 사용량이 많습니다</p>
+                      <p className="text-sm text-amber-400/80">
+                        프리미엄으로 업그레이드하면 무제한으로 이용할 수 있습니다.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isPremium && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3 font-medium text-red-300 transition-all hover:border-red-500/50 hover:bg-red-500/20 disabled:opacity-50"
+                >
+                  {cancelling ? "취소 중..." : "구독 취소"}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Plan Comparison */}
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-3xl font-bold text-transparent"
+        >
+          구독 플랜
+        </motion.h2>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-12 grid grid-cols-1 gap-6 lg:grid-cols-2"
+        >
+          {/* Free Plan */}
+          {freePlan && (
+            <div
+              className={`group overflow-hidden rounded-3xl border bg-gradient-to-br from-white/5 to-white/0 p-8 backdrop-blur-sm ${
+                !isPremium ? "border-blue-500/30" : "border-white/10"
+              }`}
+            >
+              <div className="mb-6">
+                <h3 className="mb-2 text-2xl font-bold text-white">{freePlan.name}</h3>
+                <p className="text-slate-400">{freePlan.description}</p>
+              </div>
+
+              <div className="mb-8 flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-white">무료</span>
+              </div>
+
+              <ul className="mb-8 space-y-4">
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 shrink-0 text-green-400" />
+                  <span className="text-slate-300">
+                    하루 {freePlan.features.api_calls_per_day}회 API 호출
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 shrink-0 text-green-400" />
+                  <span className="text-slate-300">기본 분석 기능</span>
+                </li>
+                <li className="flex items-start gap-3 opacity-50">
+                  <X className="h-5 w-5 shrink-0 text-red-400" />
+                  <span className="text-slate-500">CSV 내보내기</span>
+                </li>
+                <li className="flex items-start gap-3 opacity-50">
+                  <X className="h-5 w-5 shrink-0 text-red-400" />
+                  <span className="text-slate-500">PDF 리포트</span>
+                </li>
+                <li className="flex items-start gap-3 opacity-50">
+                  <X className="h-5 w-5 shrink-0 text-red-400" />
+                  <span className="text-slate-500">포트폴리오 추적</span>
+                </li>
+                <li className="flex items-start gap-3 opacity-50">
+                  <X className="h-5 w-5 shrink-0 text-red-400" />
+                  <span className="text-slate-500">가격 알림</span>
+                </li>
+              </ul>
+
+              {!isPremium ? (
+                <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-center font-medium text-blue-300">
+                  현재 플랜
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white transition-all hover:bg-white/10"
+                >
+                  다운그레이드
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Premium Plan */}
+          {premiumPlan && (
+            <div
+              className={`group relative overflow-hidden rounded-3xl border bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-8 backdrop-blur-sm ${
+                isPremium ? "border-amber-500/30" : "border-amber-500/20"
+              }`}
+            >
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-20"></div>
+
+              <div className="relative">
+                {premiumPlan.popular && (
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/20 px-3 py-1">
+                    <Sparkles className="h-4 w-4 text-amber-400" />
+                    <span className="text-sm font-semibold text-amber-300">인기</span>
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <div className="mb-2 flex items-center gap-2">
+                    <h3 className="bg-gradient-to-r from-amber-200 to-orange-300 bg-clip-text text-2xl font-bold text-transparent">
+                      {premiumPlan.name}
+                    </h3>
+                    <Crown className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <p className="text-slate-400">{premiumPlan.description}</p>
+                </div>
+
+                <div className="mb-8 flex items-baseline gap-2">
+                  <span className="bg-gradient-to-r from-amber-200 to-orange-300 bg-clip-text text-4xl font-bold text-transparent">
+                    {premiumPlan.price_monthly.toLocaleString()}원
+                  </span>
+                  <span className="text-slate-400">/월</span>
+                </div>
+                {premiumPlan.price_yearly && (
+                  <p className="mb-8 text-sm text-slate-400">
+                    연간 결제 시 {premiumPlan.price_yearly.toLocaleString()}원 (2개월 무료)
+                  </p>
+                )}
+
+                <ul className="mb-8 space-y-4">
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="font-semibold text-white">무제한 API 호출</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="text-white">모든 분석 기능</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="font-semibold text-white">CSV 데이터 내보내기</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="font-semibold text-white">PDF 리포트 생성</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="font-semibold text-white">
+                      포트폴리오 추적 (최대 {premiumPlan.features.max_portfolios}개)
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="font-semibold text-white">
+                      가격 알림 설정 (최대 {premiumPlan.features.max_alerts}개)
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="text-white">광고 제거</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Check className="h-5 w-5 shrink-0 text-amber-400" />
+                    <span className="text-white">우선 고객 지원</span>
+                  </li>
+                </ul>
+
+                {isPremium ? (
+                  <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-center font-semibold text-white">
+                    현재 플랜
+                  </div>
+                ) : (
+                  <motion.button
+                    type="button"
+                    onClick={() => handleUpgrade(premiumPlan.plan_id)}
+                    disabled={upgrading}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative w-full overflow-hidden rounded-xl disabled:opacity-50"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                    <div className="relative flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white">
+                      <TrendingUp className="h-5 w-5" />
+                      {upgrading ? "업그레이드 중..." : "프리미엄 시작하기"}
+                    </div>
+                  </motion.button>
+                )}
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* FAQ Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-8 backdrop-blur-sm"
+        >
+          <h2 className="mb-6 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-2xl font-bold text-transparent">
+            자주 묻는 질문
+          </h2>
+
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div
+                key={index}
+                className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20"
+              >
+                <button
+                  type="button"
+                  onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                  className="flex w-full items-center justify-between p-6 text-left transition-colors hover:bg-white/5"
+                >
+                  <span className="font-semibold text-white">{faq.question}</span>
+                  {expandedFaq === index ? (
+                    <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />
+                  )}
+                </button>
+                {expandedFaq === index && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-white/10 px-6 py-4"
+                  >
+                    <p className="text-slate-300">{faq.answer}</p>
+                  </motion.div>
+                )}
+              </div>
+            ))}
           </div>
-          <div>
-            <p className="font-medium text-gray-900">
-              API 사용량은 언제 초기화되나요?
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              무료 플랜의 API 사용량은 매일 자정(KST)에 자동으로 초기화됩니다.
-            </p>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
