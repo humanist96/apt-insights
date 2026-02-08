@@ -284,7 +284,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-gray-600 dark:text-gray-400">
-                "갭투자 기회를 찾는데 정말 유용해요. 실거래가 데이터로 저평가된 매물을 쉽게 찾을 수 있었습니다."
+                &quot;갭투자 기회를 찾는데 정말 유용해요. 실거래가 데이터로 저평가된 매물을 쉽게 찾을 수 있었습니다.&quot;
               </p>
             </div>
 
@@ -299,7 +299,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-gray-600 dark:text-gray-400">
-                "복잡한 부동산 데이터를 한눈에 볼 수 있어서 좋아요. 초보자도 쉽게 이해할 수 있는 시각화가 인상적입니다."
+                &quot;복잡한 부동산 데이터를 한눈에 볼 수 있어서 좋아요. 초보자도 쉽게 이해할 수 있는 시각화가 인상적입니다.&quot;
               </p>
             </div>
 
@@ -314,7 +314,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-gray-600 dark:text-gray-400">
-                "전세가율 분석으로 깡통전세를 피할 수 있었어요. 안전한 투자에 꼭 필요한 도구입니다."
+                &quot;전세가율 분석으로 깡통전세를 피할 수 있었어요. 안전한 투자에 꼭 필요한 도구입니다.&quot;
               </p>
             </div>
           </div>
