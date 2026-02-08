@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import {
@@ -8,436 +10,350 @@ import {
   ArrowRight,
   Zap,
   Shield,
-  LineChart
+  LineChart,
+  Sparkles,
+  Crown,
+  Award,
+  Star
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Home() {
+  const fadeInUp = {
+    initial: { opacity: 0, y: 60 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 }
+  };
+
+  const staggerContainer = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 py-20 text-white">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Premium Hero Section */}
+      <section className="relative overflow-hidden py-32">
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-600/20 via-purple-600/10 to-transparent"></div>
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5"></div>
+          {/* Floating Orbs */}
+          <motion.div
+            className="absolute left-1/4 top-20 h-64 w-64 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 opacity-20 blur-3xl"
+            animate={{
+              y: [0, 30, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div
+            className="absolute right-1/4 top-40 h-96 w-96 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 opacity-10 blur-3xl"
+            animate={{
+              y: [0, -40, 0],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+        </div>
+
         <div className="container relative mx-auto px-4">
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
-              아파트 투자,<br />이제 데이터로 결정하세요
-            </h1>
-            <p className="mb-8 text-xl text-blue-100 md:text-2xl">
-              63,809건의 실거래가 데이터 분석으로 스마트한 투자 결정
-            </p>
-            <div className="flex flex-col justify-center gap-4 sm:flex-row">
+          <motion.div
+            className="mx-auto max-w-5xl text-center"
+            initial="initial"
+            animate="animate"
+            variants={staggerContainer}
+          >
+            {/* Premium Badge */}
+            <motion.div variants={fadeInUp} className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-amber-600/10 px-6 py-3 backdrop-blur-sm">
+              <Crown className="h-5 w-5 text-amber-400" />
+              <span className="bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-sm font-semibold text-transparent">
+                Premium Real Estate Analytics Platform
+              </span>
+            </motion.div>
+
+            <motion.h1
+              variants={fadeInUp}
+              className="mb-8 bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-6xl font-bold leading-tight text-transparent md:text-7xl lg:text-8xl"
+            >
+              아파트 투자의
+              <br />
+              새로운 기준
+            </motion.h1>
+
+            <motion.p
+              variants={fadeInUp}
+              className="mb-12 text-2xl text-slate-300 md:text-3xl"
+            >
+              63,809건의 실거래가 데이터로
+              <br className="hidden md:block" />
+              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text font-semibold text-transparent">
+                스마트한 투자 결정
+              </span>을 내리세요
+            </motion.p>
+
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col justify-center gap-6 sm:flex-row"
+            >
               <Link href="/register">
-                <Button
-                  variant="primary"
-                  className="h-14 bg-white px-8 text-lg text-blue-700 hover:bg-blue-50"
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group relative overflow-hidden rounded-2xl"
                 >
-                  무료로 시작하기
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                  <div className="relative flex items-center gap-2 px-10 py-5 text-lg font-semibold text-white">
+                    <Sparkles className="h-5 w-5" />
+                    무료로 시작하기
+                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </motion.div>
               </Link>
+
               <Link href="/regional">
-                <Button
-                  variant="secondary"
-                  className="h-14 border-2 border-white bg-transparent px-8 text-lg text-white hover:bg-white/10"
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group relative overflow-hidden rounded-2xl"
                 >
-                  데모 보기
-                </Button>
+                  <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                  <div className="relative flex items-center gap-2 border-2 border-white/20 px-10 py-5 text-lg font-semibold text-white">
+                    <LineChart className="h-5 w-5" />
+                    데모 체험하기
+                  </div>
+                </motion.div>
               </Link>
-            </div>
-            <div className="mt-8 text-sm text-blue-200">
-              신용카드 등록 불필요 • 언제든 취소 가능
-            </div>
-          </div>
+            </motion.div>
+
+            <motion.div
+              variants={fadeInUp}
+              className="mt-12 flex items-center justify-center gap-6 text-sm text-slate-400"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400" />
+                신용카드 등록 불필요
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400" />
+                언제든 취소 가능
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Trust Indicators */}
-      <section className="border-b bg-gray-50 py-8 dark:bg-gray-900">
+      {/* Premium Stats Section */}
+      <section className="py-16">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
-            <div>
-              <div className="text-3xl font-bold text-blue-600">63,809</div>
-              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">실거래 데이터</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-600">12+</div>
-              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">분석 도구</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-600">실시간</div>
-              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">데이터 업데이트</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-600">100%</div>
-              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">국토부 공식 데이터</div>
-            </div>
-          </div>
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid grid-cols-2 gap-6 md:grid-cols-4"
+          >
+            {[
+              { value: "63,809", label: "실거래 데이터", icon: BarChart3, gradient: "from-blue-500 to-cyan-500" },
+              { value: "12+", label: "프리미엄 분석 도구", icon: Target, gradient: "from-purple-500 to-pink-500" },
+              { value: "실시간", label: "데이터 업데이트", icon: Zap, gradient: "from-amber-500 to-orange-500" },
+              { value: "100%", label: "국토부 공식 데이터", icon: Shield, gradient: "from-green-500 to-emerald-500" }
+            ].map((stat, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-8 backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:from-white/10"
+              >
+                <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r ${stat.gradient} opacity-80`}>
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+                <div className={`mb-2 bg-gradient-to-r ${stat.gradient} bg-clip-text text-4xl font-bold text-transparent`}>
+                  {stat.value}
+                </div>
+                <div className="text-sm text-slate-400">{stat.label}</div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20">
+      {/* Premium Features Section */}
+      <section className="py-32">
         <div className="container mx-auto px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">투자 성공을 위한 모든 도구</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="mb-20 text-center"
+          >
+            <motion.div variants={fadeInUp} className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2">
+              <Award className="h-4 w-4 text-purple-400" />
+              <span className="text-sm font-semibold text-purple-300">프리미엄 기능</span>
+            </motion.div>
+            <motion.h2
+              variants={fadeInUp}
+              className="mb-6 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-5xl font-bold text-transparent md:text-6xl"
+            >
+              투자 성공을 위한
+              <br />
+              모든 것
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="text-xl text-slate-400"
+            >
               전문가 수준의 부동산 분석을 누구나 쉽게
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-lg border bg-white p-8 shadow-sm transition-shadow hover:shadow-lg dark:bg-gray-800">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900">
-                <Zap className="h-6 w-6" />
-              </div>
-              <h3 className="mb-3 text-xl font-bold">실시간 분석</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                국토교통부 최신 실거래가 데이터를 실시간으로 분석하여 시장 트렌드를 빠르게 파악하세요.
-              </p>
-            </div>
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid gap-8 md:grid-cols-3"
+          >
+            {[
+              {
+                icon: Zap,
+                title: "실시간 분석",
+                description: "국토교통부 최신 실거래가 데이터를 실시간으로 분석하여 시장 트렌드를 빠르게 파악하세요.",
+                gradient: "from-blue-500 to-cyan-500"
+              },
+              {
+                icon: TrendingUp,
+                title: "AI 기반 예측",
+                description: "머신러닝 알고리즘으로 향후 가격 추이를 예측하고 투자 타이밍을 놓치지 마세요.",
+                gradient: "from-purple-500 to-pink-500"
+              },
+              {
+                icon: Target,
+                title: "맞춤형 포트폴리오",
+                description: "보유 부동산을 관리하고 실시간 평가손익을 확인하며 전문가처럼 투자하세요.",
+                gradient: "from-amber-500 to-orange-500"
+              },
+              {
+                icon: Shield,
+                title: "안전한 투자",
+                description: "깡통전세 위험도 분석과 전세가율 모니터링으로 안전한 투자를 보장합니다.",
+                gradient: "from-green-500 to-emerald-500"
+              },
+              {
+                icon: BarChart3,
+                title: "심화 분석 리포트",
+                description: "PDF/CSV 다운로드로 상세한 투자 리포트를 받아보고 의사결정에 활용하세요.",
+                gradient: "from-rose-500 to-pink-500"
+              },
+              {
+                icon: Star,
+                title: "프리미엄 지원",
+                description: "전문 부동산 애널리스트의 1:1 상담과 맞춤형 투자 전략을 제공받으세요.",
+                gradient: "from-indigo-500 to-purple-500"
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                whileHover={{ y: -10 }}
+                className="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-8 backdrop-blur-sm transition-all duration-300"
+              >
+                {/* Glow Effect */}
+                <div className={`absolute -inset-1 bg-gradient-to-r ${feature.gradient} opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-30`}></div>
 
-            <div className="rounded-lg border bg-white p-8 shadow-sm transition-shadow hover:shadow-lg dark:bg-gray-800">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-600 dark:bg-green-900">
-                <BarChart3 className="h-6 w-6" />
-              </div>
-              <h3 className="mb-3 text-xl font-bold">심층 인사이트</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                12가지 전문가급 분석 도구로 지역별, 평형별, 시기별 세밀한 시장 분석이 가능합니다.
-              </p>
-            </div>
-
-            <div className="rounded-lg border bg-white p-8 shadow-sm transition-shadow hover:shadow-lg dark:bg-gray-800">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900">
-                <Target className="h-6 w-6" />
-              </div>
-              <h3 className="mb-3 text-xl font-bold">투자 기회 발굴</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                갭투자, 급매물, 저평가 아파트를 자동으로 탐지하여 투자 기회를 놓치지 마세요.
-              </p>
-            </div>
-          </div>
+                <div className="relative">
+                  <div className={`mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r ${feature.gradient}`}>
+                    <feature.icon className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="mb-4 text-2xl font-bold text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="text-slate-400">
+                    {feature.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="bg-gray-50 py-20 dark:bg-gray-900">
+      {/* Premium CTA Section */}
+      <section className="py-32">
         <div className="container mx-auto px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">어떻게 작동하나요?</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              3단계로 시작하는 스마트한 투자
-            </p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 p-16 backdrop-blur-sm"
+          >
+            {/* Animated Background */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10"></div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="text-center">
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
-                  1
-                </div>
+            <div className="relative mx-auto max-w-4xl text-center">
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-6 py-3">
+                <Crown className="h-5 w-5 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">Limited Time Offer</span>
               </div>
-              <h3 className="mb-3 text-xl font-bold">관심 지역 선택</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                투자하고 싶은 지역을 선택하면 해당 지역의 모든 실거래 데이터를 불러옵니다.
+
+              <h2 className="mb-6 bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-5xl font-bold text-transparent md:text-6xl">
+                지금 시작하고
+                <br />
+                첫 달 무료 혜택 받기
+              </h2>
+
+              <p className="mb-12 text-xl text-slate-300">
+                프리미엄 멤버십으로 모든 기능을 제한 없이 사용하세요
               </p>
-            </div>
 
-            <div className="text-center">
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
-                  2
-                </div>
-              </div>
-              <h3 className="mb-3 text-xl font-bold">다양한 분석 도구 활용</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                가격 트렌드, 거래량, 갭투자, 급매물 등 12가지 분석 메뉴를 활용하세요.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
-                  3
-                </div>
-              </div>
-              <h3 className="mb-3 text-xl font-bold">데이터 기반 투자 결정</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                분석 결과를 바탕으로 자신감 있는 투자 결정을 내리세요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">투명한 가격 정책</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              필요한 만큼만 결제하세요
-            </p>
-          </div>
-
-          <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-2">
-            {/* Free Plan */}
-            <div className="rounded-lg border-2 bg-white p-8 shadow-sm dark:bg-gray-800">
-              <div className="mb-4">
-                <h3 className="text-2xl font-bold">무료</h3>
-                <div className="mt-2">
-                  <span className="text-4xl font-bold">₩0</span>
-                  <span className="text-gray-600 dark:text-gray-400">/월</span>
-                </div>
-              </div>
-              <ul className="mb-8 space-y-3">
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-green-500" />
-                  <span>월 10회 데이터 조회</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-green-500" />
-                  <span>기본 분석 도구</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-green-500" />
-                  <span>최근 3개월 데이터</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-green-500" />
-                  <span>웹 대시보드 접근</span>
-                </li>
-              </ul>
               <Link href="/register">
-                <Button variant="secondary" className="w-full">
-                  무료로 시작하기
-                </Button>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="inline-flex"
+                >
+                  <div className="group relative overflow-hidden rounded-2xl">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                    <div className="relative flex items-center gap-3 px-12 py-6 text-xl font-bold text-white">
+                      <Sparkles className="h-6 w-6" />
+                      지금 바로 시작하기
+                      <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-2" />
+                    </div>
+                  </div>
+                </motion.div>
               </Link>
-            </div>
 
-            {/* Premium Plan */}
-            <div className="relative rounded-lg border-2 border-blue-600 bg-white p-8 shadow-lg dark:bg-gray-800">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-4 py-1 text-sm font-bold text-white">
-                추천
-              </div>
-              <div className="mb-4">
-                <h3 className="text-2xl font-bold">프리미엄</h3>
-                <div className="mt-2">
-                  <span className="text-4xl font-bold">₩29,000</span>
-                  <span className="text-gray-600 dark:text-gray-400">/월</span>
+              <div className="mt-8 flex items-center justify-center gap-8 text-sm text-slate-400">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  첫 달 완전 무료
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  언제든 해지 가능
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  모든 프리미엄 기능
                 </div>
               </div>
-              <ul className="mb-8 space-y-3">
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">무제한 데이터 조회</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">모든 고급 분석 도구</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">5년 과거 데이터 접근</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">CSV/PDF 데이터 내보내기</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">갭투자 기회 알림</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-600" />
-                  <span className="font-semibold">우선 고객 지원</span>
-                </li>
-              </ul>
-              <Link href="/payment">
-                <Button variant="primary" className="w-full">
-                  프리미엄 시작하기
-                </Button>
-              </Link>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="bg-gray-50 py-20 dark:bg-gray-900">
-        <div className="container mx-auto px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">고객 후기</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              실제 사용자들의 생생한 경험담
-            </p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-              <div className="mb-4 flex items-center">
-                <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                  김
-                </div>
-                <div>
-                  <div className="font-bold">김민수</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">서울 강남구 투자자</div>
-                </div>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                &quot;갭투자 기회를 찾는데 정말 유용해요. 실거래가 데이터로 저평가된 매물을 쉽게 찾을 수 있었습니다.&quot;
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-              <div className="mb-4 flex items-center">
-                <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-                  이
-                </div>
-                <div>
-                  <div className="font-bold">이지은</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">경기 수원시 투자자</div>
-                </div>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                &quot;복잡한 부동산 데이터를 한눈에 볼 수 있어서 좋아요. 초보자도 쉽게 이해할 수 있는 시각화가 인상적입니다.&quot;
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-              <div className="mb-4 flex items-center">
-                <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                  박
-                </div>
-                <div>
-                  <div className="font-bold">박준호</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">서울 송파구 투자자</div>
-                </div>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                &quot;전세가율 분석으로 깡통전세를 피할 수 있었어요. 안전한 투자에 꼭 필요한 도구입니다.&quot;
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">자주 묻는 질문</h2>
-          </div>
-
-          <div className="mx-auto max-w-3xl space-y-4">
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                데이터는 얼마나 자주 업데이트되나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                국토교통부 공공데이터 API를 통해 실시간으로 데이터를 수집합니다.
-                실거래가 신고가 접수되는 즉시 플랫폼에 반영됩니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                무료 플랜과 프리미엄의 차이는 무엇인가요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                무료 플랜은 월 10회 조회 제한과 최근 3개월 데이터만 제공됩니다.
-                프리미엄은 무제한 조회, 5년 과거 데이터, 고급 분석 도구, 데이터 내보내기 기능을 제공합니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                결제는 어떻게 이루어지나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                신용카드, 체크카드, 간편결제(카카오페이, 네이버페이 등)를 지원합니다.
-                언제든지 구독을 취소할 수 있으며, 별도의 위약금은 없습니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                어떤 지역의 데이터를 볼 수 있나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                전국 모든 시·군·구의 아파트 실거래가 데이터를 제공합니다.
-                서울, 경기, 인천을 포함한 수도권은 물론 지방 광역시와 중소도시까지 전부 조회 가능합니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                갭투자란 무엇인가요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                갭투자는 전세가와 매매가의 차이(갭)가 적은 매물에 투자하는 전략입니다.
-                적은 자본으로 부동산을 보유할 수 있어 초보 투자자에게 인기가 많습니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                환불 정책은 어떻게 되나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                프리미엄 구독 후 7일 이내에는 전액 환불이 가능합니다.
-                그 이후에는 언제든 구독을 취소할 수 있으며, 다음 결제일에 자동으로 종료됩니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                모바일에서도 사용할 수 있나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                네, 반응형 웹 디자인으로 PC, 태블릿, 스마트폰 모두에서 최적화된 경험을 제공합니다.
-                별도의 앱 설치 없이 웹브라우저에서 바로 사용하실 수 있습니다.
-              </p>
-            </details>
-
-            <details className="group rounded-lg border bg-white p-6 dark:bg-gray-800">
-              <summary className="cursor-pointer text-lg font-bold">
-                고객 지원은 어떻게 받나요?
-              </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
-                이메일(support@aptanalysis.com)로 문의하실 수 있으며,
-                프리미엄 회원은 우선 지원을 받으실 수 있습니다. 평균 24시간 이내 답변을 드립니다.
-              </p>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="bg-gradient-to-br from-blue-600 to-indigo-700 py-20 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="mb-4 text-4xl font-bold">지금 바로 시작하세요</h2>
-          <p className="mb-8 text-xl text-blue-100">
-            무료로 시작하고, 필요할 때 업그레이드하세요
-          </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/register">
-              <Button
-                variant="primary"
-                className="h-14 bg-white px-8 text-lg text-blue-700 hover:bg-blue-50"
-              >
-                무료 계정 만들기
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/regional">
-              <Button
-                variant="secondary"
-                className="h-14 border-2 border-white bg-transparent px-8 text-lg text-white hover:bg-white/10"
-              >
-                먼저 둘러보기
-              </Button>
-            </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
     </div>
