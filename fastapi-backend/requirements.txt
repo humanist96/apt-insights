@@ -5,8 +5,8 @@ pydantic==2.9.2
 pydantic-settings==2.6.0
 
 # Database (PostgreSQL)
-psycopg2-binary==2.9.10
-sqlalchemy==2.0.36
+psycopg2-binary==2.9.11
+sqlalchemy==2.0.46
 
 # Logging
 structlog==24.4.0
